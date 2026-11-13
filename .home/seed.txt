@@ -1,0 +1,5 @@
+# Fichiers copiés UNE SEULE FOIS s'ils n'existent pas : ils appartiennent ensuite au dépôt dérivé.
+AGENTS.md
+CLAUDE.md
+.gitignore
+.claude/settings.json

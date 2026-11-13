@@ -1,0 +1,13 @@
+# Fichiers gérés par repo-home : écrasés à chaque `node scripts/home-sync.mjs`.
+# Un chemin de dossier inclut tout son contenu. Ne les modifie pas dans les dépôts dérivés.
+.githooks
+scripts/check-commit-msg.mjs
+scripts/check-style.mjs
+scripts/setup-hooks.mjs
+scripts/home-sync.mjs
+.claude/commands
+.github/PULL_REQUEST_TEMPLATE.md
+.github/ISSUE_TEMPLATE
+.editorconfig
+.home/managed.txt
+.home/seed.txt

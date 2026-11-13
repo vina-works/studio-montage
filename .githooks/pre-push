@@ -1,0 +1,23 @@
+#!/bin/sh
+# Bloque le push si `pnpm check` (lint + typecheck + tests) échoue.
+# Sans effet si le projet n'a pas de script "check" (ex. dépôt de docs).
+# Activé par `node scripts/setup-hooks.mjs` (voir README).
+
+if [ ! -f package.json ] || ! grep -q '"check"' package.json; then
+  exit 0
+fi
+
+echo "🔎 pre-push : pnpm check…"
+
+# Échouer bruyamment : un hook qui ne peut pas vérifier ne doit pas laisser passer en silence.
+if ! command -v pnpm >/dev/null 2>&1; then
+  echo "❌ pnpm introuvable, impossible de vérifier. Installe-le : corepack enable" >&2
+  exit 1
+fi
+
+if ! pnpm check; then
+  echo "" >&2
+  echo "❌ Push bloqué : corrige les erreurs ci-dessus, puis réessaie." >&2
+  echo "   (Urgence uniquement : git push --no-verify.)" >&2
+  exit 1
+fi

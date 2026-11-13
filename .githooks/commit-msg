@@ -1,0 +1,12 @@
+#!/bin/sh
+# Refuse le commit si le message ne respecte pas les Conventional Commits
+# ou si sa première ligne dépasse 55 caractères. Logique dans scripts/check-commit-msg.mjs.
+# Activé par `pnpm install` (voir scripts/setup-hooks.mjs).
+
+# Échouer bruyamment : un hook qui ne peut pas vérifier ne doit pas laisser passer en silence.
+if ! command -v node >/dev/null 2>&1; then
+  echo "❌ node introuvable, impossible de vérifier le message de commit." >&2
+  exit 1
+fi
+
+exec node "$(dirname "$0")/../scripts/check-commit-msg.mjs" "$1"

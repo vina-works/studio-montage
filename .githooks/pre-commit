@@ -1,0 +1,11 @@
+#!/bin/sh
+# Avertit (sans bloquer) si les fichiers de contenu indexés contiennent un emoji,
+# un point médian ou un tiret cadratin. Règle : voir AGENTS.md, section « Style d'écriture ».
+# Pour bloquer : remplacer par `node scripts/check-style.mjs --strict ...`.
+
+command -v node >/dev/null 2>&1 || exit 0
+files=$(git diff --cached --name-only --diff-filter=ACM)
+[ -z "$files" ] && exit 0
+# shellcheck disable=SC2086
+echo "$files" | xargs node "$(dirname "$0")/../scripts/check-style.mjs"
+exit 0
