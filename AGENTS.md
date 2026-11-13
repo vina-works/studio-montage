@@ -1,10 +1,20 @@
-# <nom du projet>
+# tenko-studio
 
-<!-- Décris ici le projet en 2-3 lignes : stack, architecture, commandes. Ce fichier est lu par les agents (Claude Code, Codex, etc.). Les sections ci-dessous viennent de repo-home : ne les modifie pas ici, modifie-les dans repo-home. -->
+Studio de montage par transcript : on monte podcasts, shorts et illustrations en éditant le texte (transcription au mot, `edit.json`, rendu FFmpeg). Pas d'application : un wiki (`wiki/`), des scripts Python (`outils/`), des modèles (`modeles/`) et le dossier de chaque épisode (`episodes/`). Testé sous Windows (PowerShell), avec une carte NVIDIA.
+
+## Avant de monter
+
+- Lire `wiki/README.md`, puis la page de l'étape en cours. Les réglages de rythme validés sont dans `wiki/02-plan-editorial-et-rythme.md` : ne pas revenir aux réglages de la V1, jugés trop hachés.
+- Demander quel fichier sera publié (vidéo habillée ou non) avant de faire le plan de coupe, et mesurer le décalage avec `outils/aligner.py` si la transcription vient d'un autre fichier.
+- Proposer `edit.json`, un bilan et la liste des raccords à écouter, puis **attendre la validation de l'auteur** avant tout rendu final.
+- Vérifier chaque rendu : durée de chaque piste (`ffprobe`), retranscription (`outils/verifier.py`), planche d'images aux moments clés. Dire ce qui n'a pas été écouté.
+- Ne jamais écraser une source ni un rendu. Ne jamais committer de média (vidéo, audio, rendus) ni de transcription complète.
+- Vérifier qui parle (`outils/qui_parle.py` et plans) avant de bâtir un titre ou un short sur l'identité de quelqu'un.
 
 ## Commandes
 
-- `pnpm check` : lint + typecheck + tests, à lancer avant de conclure une tâche (si le projet le définit).
+- Environnement : `$HOME\.video-env\Scripts\python.exe` (faster-whisper 1.2.1, NumPy). Les outils se lancent depuis `outils/`.
+- Pas de `pnpm check` ici : tester un outil modifié sur un épisode local de `episodes/` (voir `outils/README.md`, « État des tests »).
 
 ## Git
 

@@ -6,3 +6,25 @@ coverage
 .env.*.local
 .DS_Store
 .claude/settings.local.json
+
+# Médias et rendus : jamais dans le dépôt
+*.mp4
+*.mov
+*.mp3
+*.m4a
+*.wav
+*.zip
+*.transcript.json
+*.transcript.md
+*.srt
+*.ass
+rendus/
+tmp/
+.travail*/
+__pycache__/
+
+# Fichiers régénérables par outils/panneaux.py et planche_plans.py
+episodes/*/illustrations/*.html
+episodes/*/illustrations/*.png
+episodes/*/illustrations/*.jpg
+episodes/*/shorts/planche_*.jpg

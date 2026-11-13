@@ -1,53 +1,28 @@
-# repo-home
+# tenko-studio
 
-Base commune des dépôts Vina Works : la config qu'on ne veut pas réécrire à chaque nouveau projet. Ce dépôt est un **template GitHub** (« Template repository »), sans aucun code applicatif.
+Un studio de montage par transcript. On monte des podcasts et des vidéos face caméra en éditant le texte, pas la timeline : transcription au mot, plan de coupe en JSON, rendu FFmpeg, vérification par retranscription. Le même matériau sert ensuite aux shorts verticaux et aux illustrations.
 
-## Contenu
+Ce dépôt contient quatre choses :
 
-| Fichier | Rôle | Mise à jour |
-|---|---|---|
-| `.githooks/commit-msg` + `scripts/check-commit-msg.mjs` | Format `type(scope): #issue description`, 55 caractères max | gérée |
-| `.githooks/pre-push` | lance `pnpm check` s'il existe | gérée |
-| `scripts/check-style.mjs` + `.githooks/pre-commit` | avertit sur emoji, point médian, tiret cadratin dans les fichiers de contenu (`--strict` pour bloquer) | gérée |
-| `scripts/setup-hooks.mjs` | active `core.hooksPath` | gérée |
-| `scripts/home-sync.mjs` | récupère les mises à jour de repo-home | gérée |
-| `.claude/commands/` | `/commit`, `/home-sync` | gérée |
-| `.github/PULL_REQUEST_TEMPLATE.md`, `.github/ISSUE_TEMPLATE/` | templates PR et issues | gérée |
-| `.editorconfig` | style d'édition | gérée |
-| `AGENTS.md` (+ `CLAUDE.md` qui l'importe) | consignes pour les agents | **copiée une fois**, ensuite à vous |
-| `.claude/settings.json`, `.gitignore` | réglages de départ | **copiés une fois**, ensuite à vous |
+- [`wiki/`](wiki/README.md) : la méthode, les réglages qui marchent, les pièges déjà rencontrés et les retours d'écoute. C'est le point d'entrée.
+- [`outils/`](outils/README.md) : les scripts Python, réutilisables d'un épisode à l'autre.
+- [`modeles/`](modeles/) : plan éditorial, brief du chef monteur, brief des shorts.
+- [`episodes/`](episodes/README.md) : le dossier de chaque épisode (plans, `edit.json`, specs des shorts et des panneaux, journal des décisions). Il reste en local : git ignore tout son contenu.
 
-« Gérée » = écrasée à chaque synchronisation (listes dans `.home/managed.txt` et `.home/seed.txt`). Pas de lint/format ni de CI ici : ils dépendent de la stack, ils restent dans les starters.
+Les couleurs, polices et signatures des visuels viennent d'un [thème](theme/README.md). Le dépôt fournit un thème neutre ; ta charte à toi va dans `theme/local.json`, ignoré par git. De même, tes corrections de transcription personnelles (noms des intervenants, marques) vont dans `outils/glossaire.local.json`.
 
-## Démarrer un nouveau dépôt
+## Démarrer
 
-```bash
-gh repo create vina-works/mon-projet --private --template vina-works/repo-home --clone
-cd mon-projet
-node scripts/setup-hooks.mjs   # active les hooks (inutile si `pnpm install` l'appelle via "prepare")
+Prérequis : Windows, FFmpeg et FFprobe dans le `PATH`, Python 3.12, Google Chrome (pour rendre les panneaux), une carte NVIDIA pour aller vite (sinon le processeur prend le relais).
+
+```powershell
+python -m venv $HOME\.video-env
+& $HOME\.video-env\Scripts\python.exe -m pip install -r outils\requirements.txt
+node scripts/setup-hooks.mjs
 ```
 
-Puis : renseigner `AGENTS.md` (nom, stack, commandes) et, si le projet utilise pnpm, ajouter `"prepare": "node scripts/setup-hooks.mjs"` et un script `check` dans `package.json`.
+Puis suivre [le déroulé d'un épisode](wiki/01-deroule-d-un-episode.md).
 
-## Mettre à jour un dépôt existant
+## Base commune
 
-Depuis la racine du dépôt dérivé (nécessite `gh auth login`) :
-
-```bash
-node scripts/home-sync.mjs --dry-run   # voir ce qui changerait
-node scripts/home-sync.mjs             # appliquer
-git diff                               # relire, puis committer
-```
-
-Dans Claude Code : `/home-sync`. Pour un dépôt qui n'a pas encore le script, une seule fois :
-
-```bash
-gh api repos/vina-works/repo-home/contents/scripts/home-sync.mjs -H "Accept: application/vnd.github.raw" > /tmp/home-sync.mjs
-mkdir -p scripts && cp /tmp/home-sync.mjs scripts/ && node scripts/home-sync.mjs
-```
-
-Le commit de repo-home appliqué est noté dans `.home/version`. Le script ne committe jamais, et ne touche ni à `AGENTS.md` ni à `.gitignore` s'ils existent.
-
-## Faire évoluer la base
-
-Modifier ici (jamais dans un dépôt dérivé : ce serait écrasé), committer au format habituel, puis lancer `/home-sync` dans les dépôts concernés. Pour qu'un nouveau fichier soit propagé, l'ajouter à `.home/managed.txt` (ou `.home/seed.txt`).
+Ce dépôt dérive de [`vina-works/repo-home`](https://github.com/vina-works/repo-home) : hooks Git, format des commits, contrôle de style. Mise à jour : `node scripts/home-sync.mjs`.

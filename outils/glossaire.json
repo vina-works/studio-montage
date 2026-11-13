@@ -1,0 +1,38 @@
+{
+  "description": "Corrections appliquées aux sous-titres : erreurs de Whisper sur les noms et le jargon. Expressions régulières Python. Les corrections propres à tes vidéos (noms des intervenants, marques) vont dans glossaire.local.json, au même format, ignoré par git.",
+  "remplacements": [
+    [
+      "(?i)\\b(web ?coding|vape coding|level coding)\\b",
+      "vibe coding"
+    ],
+    [
+      "(?i)\\bvibe coder\\b",
+      "vibe coder"
+    ],
+    [
+      "(?i)\\b(vaïcodées|vicodées)\\b",
+      "vibe codées"
+    ],
+    [
+      "(?i)\\bchatgpt\\b",
+      "ChatGPT"
+    ],
+    [
+      "(?i)\\brepelit\\b",
+      "Replit"
+    ]
+  ],
+  "noms_propres": [
+    "IA",
+    "PR",
+    "PC",
+    "UX",
+    "Git",
+    "GitHub",
+    "Cursor",
+    "Replit",
+    "ChatGPT",
+    "Claude",
+    "Vercel"
+  ]
+}
