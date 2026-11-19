@@ -58,6 +58,25 @@ Dans le dossier de travail, jamais dans ce dépôt :
 
 Le bouton enregistre, puis écrit une ligne dans le fichier d'envois de la salle : la vidéo, le message tapé, le chemin du `.md`. La conversation Claude qui surveille ce fichier reçoit l'envoi dans la seconde ; Claude sait le faire (consigne dans le `CLAUDE.md` du dossier de travail). Si elle ne surveille pas (conversation fermée, surveillance expirée), l'envoi attend dans le fichier : dire à Claude « lis mes envois ».
 
+## Montage : retoucher la timeline à la main
+
+Le bouton « Montage » (touche `T`) ouvre une timeline éditable du dernier plan de coupe (`edit*.json` à la racine du dossier de travail, le plus récent d'abord). Elle montre les plans (une couleur par prise), les cartes et captures, les bandeaux, et rejoue le montage directement depuis les prises d'origine, sans rien regénérer : cartes qui glissent, captures avec l'encadré de l'orateur, sous-titres recalculés (mêmes corrections que le rendu, bouton « Sous-titres »), fondu de 20 ms aux raccords. On ne rend qu'à la fin, une fois validé.
+
+| Geste | Effet |
+|---|---|
+| Clic sur un plan | Le sélectionner et s'y placer |
+| Tirer le bord gauche ou droit d'un plan | Le raccourcir ou le rallonger ; les plans suivants se recollent seuls. L'aimant cale le bord sur les mots |
+| `S` puis `Suppr` | Couper le plan à la tête de lecture, puis supprimer la partie en trop |
+| Glisser une carte | La déplacer ; elle reste attachée au plan sous elle. Tirer son bord droit : la rallonger |
+| `Ctrl`+`Z` / `Ctrl`+`Maj`+`Z` | Annuler / rétablir |
+| `+` / `-`, `Espace`, `←` `→` | Zoom, lecture, image par image (`Maj` : 1 s) |
+
+Une piste « Repères » montre les commentaires et moments forts posés dans la revue, sur les rendus comme sur les prises, ramenés à leur place dans le montage (un plan de coupe liste ses rendus dans `rendus`). Ceux qui tombent sur un passage coupé sont grisés et posés au raccord. `M` pose un repère à la main ; l'onglet « Repères » les liste tous.
+
+Les retouches s'enregistrent toutes seules, 0,6 s après chaque geste, dans `revue/montage/<plan>.manuel.json` ; `Ctrl`+`S` enregistre en plus une copie horodatée dans `revue/sauvegardes/`. Le plan d'origine n'est jamais modifié. « Plan d'origine » revient en arrière. « Envoyer à Claude » enregistre puis prévient la conversation, qui rend la nouvelle version à partir de ce fichier (nouveau nom de rendu, sans écraser les précédents).
+
+Les cartes viennent de `<plan>.overlays.json` à côté du plan (id, type, temps source, durée, image) ; sans lui, seule la coupe est éditable.
+
 ## Une salle par conversation
 
 Chaque conversation Claude a sa propre salle, lancée avec `--session <nom>`. Ses envois vont dans `revue/envois/<nom>.jsonl`, et seule cette conversation les reçoit. Deux conversations peuvent ainsi travailler en même temps, sur le même dossier ou non, sans recevoir les retours de l'autre.

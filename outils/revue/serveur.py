@@ -39,10 +39,11 @@ SAUVEGARDES = RACINE / "revue" / "sauvegardes"
 ENVOIS = RACINE / "revue" / "envois.jsonl"
 CACHE = RACINE / "tmp" / "revue_cache"
 SESSION = ""  # nom de la conversation Claude reliée à cette salle
+MONTAGES = RACINE / "revue" / "montage"  # retouches manuelles du montage (timeline)
 
 
 def fixer_racine(dossier: str, session: str = "") -> None:
-    global RACINE, COMMENTAIRES, SAUVEGARDES, ENVOIS, CACHE, SESSION
+    global RACINE, COMMENTAIRES, SAUVEGARDES, ENVOIS, CACHE, SESSION, MONTAGES
     RACINE = Path(dossier).resolve()
     SESSION = session
     COMMENTAIRES = RACINE / "revue" / "commentaires"
@@ -52,6 +53,7 @@ def fixer_racine(dossier: str, session: str = "") -> None:
     else:
         ENVOIS = RACINE / "revue" / "envois.jsonl"
     CACHE = RACINE / "tmp" / "revue_cache"
+    MONTAGES = RACINE / "revue" / "montage"
 
 
 def nom_session(brut: str) -> str:
@@ -299,6 +301,116 @@ def sauvegarder(rel: str) -> Path | None:
     return dest
 
 
+EXTS_IMG = {".png", ".jpg", ".jpeg", ".webp"}
+mimetypes.add_type("image/webp", ".webp")
+
+
+def plans_de_coupe() -> list[str]:
+    """edit*.json à la racine du dossier de travail (un plan de coupe par fichier)."""
+    plans = [p for p in RACINE.glob("edit*.json")
+             if p.is_file() and not p.name.endswith((".overlays.json", ".manuel.json"))]
+    return [p.name for p in sorted(plans, key=lambda p: p.stat().st_mtime, reverse=True)]  # le plus récent d'abord
+
+
+def fichier_plan(rel: str) -> Path | None:
+    p = chemin_sur(rel)
+    if not p or p.parent != RACINE or not p.is_file() or p.suffix.lower() != ".json" or not p.name.startswith("edit"):
+        return None
+    return p
+
+
+def montage_manuel(p: Path) -> Path:
+    return MONTAGES / f"{p.stem}.manuel.json"
+
+
+def lire_json(f: Path):
+    try:
+        return json.loads(f.read_text(encoding="utf-8-sig"))
+    except Exception:
+        return None
+
+
+def mots_transcription(p: Path) -> list:
+    """[[mot, debut, fin], ...] depuis <media>.transcript.json (timestamps au mot)."""
+    d = lire_json(p.with_suffix(".transcript.json")) or {}
+    out = []
+    for s in d.get("segments", []):
+        for w in s.get("words", []):
+            out.append([w.get("w", ""), w.get("start", 0), w.get("end", 0)])
+    return out
+
+
+
+def _mise_en_page(plan: dict, fps: int = 60) -> list[tuple]:
+    """(source, debut_source, sortie, duree) de chaque plan, quantifiés à l'image comme au rendu."""
+    out, o = [], 0.0
+    for k in plan.get("keep", []):
+        a = round(k["start"] * fps) / fps
+        n = max(1, round((k["end"] - k["start"]) * fps))
+        out.append((k["source"], a, o, n / fps))
+        o += n / fps
+    return out
+
+
+def _vers_source(couches: list[tuple], t: float):
+    for src, a, o, d in couches:
+        if o <= t < o + d:
+            return src, round(a + (t - o), 3)
+    return None
+
+
+def reperes() -> list[dict]:
+    """Commentaires, moments forts et repères posés dans la salle, ramenés au temps de la prise source.
+
+    Un plan de coupe (edit*.json) peut lister ses rendus dans "rendus" : les timecodes d'un rendu sont
+    reconvertis en temps source avec ce plan ; ceux d'une source sont repris tels quels.
+    """
+    plans = [(p, lire_json(p)) for p in RACINE.glob("edit*.json")
+             if p.is_file() and not p.name.endswith((".overlays.json", ".manuel.json"))]
+    medias: dict[str, tuple] = {}
+    for p, d in plans:
+        if not isinstance(d, dict) or not isinstance(d.get("keep"), list):
+            continue
+        for src in d.get("sources") or sorted({k.get("source") for k in d["keep"]}):
+            medias.setdefault(src, ("source", None))
+        for rel in d.get("rendus", []):
+            medias.setdefault(rel, ("rendu", _mise_en_page(d)))
+    out = []
+    for rel, (origine, couches) in medias.items():
+        f = fichier_commentaires(rel)
+        elements = lire_json(f) if f.exists() else None
+        for c in elements or []:
+            t = c.get("t")
+            if not isinstance(t, (int, float)):
+                continue
+            if origine == "source":
+                pos, fin = (rel, t), (rel, c["fin"]) if isinstance(c.get("fin"), (int, float)) else None
+            else:
+                pos = _vers_source(couches, t)
+                fin = _vers_source(couches, c["fin"]) if isinstance(c.get("fin"), (int, float)) else None
+                if pos is None:
+                    continue
+            r = {"id": c.get("id"), "media": rel, "origine": origine, "type": c.get("type") or "commentaire",
+                 "cat": c.get("cat"), "note": c.get("note"), "src": pos[0], "at": pos[1],
+                 "texte": c.get("texte") or "", "auteur": c.get("auteur") or "", "resolu": bool(c.get("resolu")), "t": t}
+            if fin and fin[0] == pos[0]:
+                r["at_fin"] = fin[1]
+            out.append(r)
+    return out
+
+
+def valider_montage(d) -> bool:
+    if not isinstance(d, dict) or not isinstance(d.get("keep"), list) or not d["keep"]:
+        return False
+    for k in d["keep"]:
+        if not (isinstance(k, dict) and isinstance(k.get("source"), str)
+                and isinstance(k.get("start"), (int, float)) and isinstance(k.get("end"), (int, float))
+                and 0 <= k["start"] < k["end"]):
+            return False
+    return isinstance(d.get("overlays", []), list)
+
+
+
 class Gestionnaire(BaseHTTPRequestHandler):
     server_version = "Revue/1.0"
 
@@ -391,6 +503,32 @@ class Gestionnaire(BaseHTTPRequestHandler):
 
         if url.path in ("/", "/index.html"):
             return self._fichier(ICI / "index.html", "text/html; charset=utf-8")
+        if url.path in ("/montage.js", "/montage.css"):
+            return self._fichier(ICI / url.path.lstrip("/"),
+                                 "text/javascript; charset=utf-8" if url.path.endswith(".js") else "text/css; charset=utf-8")
+        if url.path == "/api/montages":
+            return self._json(plans_de_coupe())
+        if url.path == "/api/montage":
+            p = fichier_plan(rel)
+            if not p:
+                return self.send_error(400, "plan de coupe inconnu")
+            m = montage_manuel(p)
+            return self._json({
+                "edit": lire_json(p),
+                "overlays": lire_json(p.with_name(p.stem + ".overlays.json")),
+                "manuel": lire_json(m) if m.exists() else None,
+                "reperes": reperes(),
+            })
+        if url.path == "/api/transcript":
+            p = chemin_sur(rel)
+            if p and p.is_file() and p.suffix.lower() in EXTS:
+                return self._json(mots_transcription(p))
+            return self.send_error(404)
+        if url.path == "/img":
+            p = chemin_sur(rel)
+            if p and p.is_file() and p.suffix.lower() in EXTS_IMG:
+                return self._fichier(p)
+            return self.send_error(404)
         if url.path == "/api/assets":
             return self._json(liste_assets())
         if url.path == "/api/info":
@@ -427,6 +565,29 @@ class Gestionnaire(BaseHTTPRequestHandler):
         url = urllib.parse.urlparse(self.path)
         q = urllib.parse.parse_qs(url.query)
         rel = (q.get("p") or [""])[0]
+        if url.path == "/api/montage":
+            plan = fichier_plan(rel)
+            if not plan:
+                return self.send_error(400, "plan de coupe inconnu")
+            n = int(self.headers.get("Content-Length") or 0)
+            try:
+                d = json.loads(self.rfile.read(n).decode("utf-8"))
+            except Exception:
+                return self.send_error(400, "JSON invalide")
+            if not valider_montage(d):
+                return self.send_error(400, "montage invalide")
+            MONTAGES.mkdir(parents=True, exist_ok=True)
+            f = montage_manuel(plan)
+            tmp = f.with_suffix(".json.tmp")
+            tmp.write_text(json.dumps(d, ensure_ascii=False, indent=1), encoding="utf-8")
+            os.replace(tmp, f)
+            copie = None
+            if (q.get("copie") or [""])[0]:
+                SAUVEGARDES.mkdir(parents=True, exist_ok=True)
+                copie = SAUVEGARDES / f"{f.stem}__{time.strftime('%Y%m%d-%H%M%S')}.json"
+                shutil.copy2(f, copie)
+            return self._json({"ok": True, "fichier": rel_de(f), "n": len(d["keep"]),
+                               "copie": rel_de(copie) if copie else None})
         if url.path != "/api/commentaires":
             return self.send_error(404)
         p = chemin_sur(rel)

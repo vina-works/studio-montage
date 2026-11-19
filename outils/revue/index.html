@@ -184,7 +184,7 @@ kbd{font-family:inherit;background:#26272e;border:1px solid #34353d;border-botto
 .modal p{color:var(--txt2);line-height:1.55;margin:0 0 6px}
 .logo{white-space:nowrap}
 .onglets{flex-wrap:wrap;row-gap:8px}
-@media (max-width:1500px){ #btnEnregistrer span,#btnImporter span,#btnExporter span{display:none} #infoMedia{display:none} }
+@media (max-width:1500px){ #btnEnregistrer span,#btnImporter span,#btnExporter span,#btnMontage span{display:none} #infoMedia{display:none} }
 @media (max-width:1100px){ #etatSave{display:none} .logo{display:none} }
 .modal code{background:#26272e;padding:1px 5px;border-radius:4px;font-size:11px}
 
@@ -218,6 +218,7 @@ kbd{font-family:inherit;background:#26272e;border:1px solid #34353d;border-botto
 #btnMoment.flash{animation:flash .5s}
 @keyframes flash{0%{background:#ffb020;color:#1a1300}100%{background:transparent}}
 </style>
+<link rel="stylesheet" href="/montage.css">
 </head>
 <body>
 <div class="app" id="app">
@@ -246,6 +247,7 @@ kbd{font-family:inherit;background:#26272e;border:1px solid #34353d;border-botto
         <button data-export="csv">Moments forts en CSV<small>Pour un tableur</small></button>
       </div>
     </div>
+    <button class="btn" id="btnMontage" title="Timeline éditable : couper, raccourcir, déplacer les cartes (T)"><svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h12M3 18h16"/><circle cx="18" cy="12" r="2"/></svg><span>Montage</span></button>
     <button class="btn primaire" id="btnEnvoyerClaude" title="Envoyer les commentaires et moments de ce média à Claude" disabled>
       <svg viewBox="0 0 24 24"><path d="m22 2-7 20-4-9-9-4zM22 2 11 13"/></svg>Envoyer à Claude</button>
     <button class="ico" id="btnAide" title="Raccourcis (?)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14M12 17h.01"/></svg></button>
@@ -367,6 +369,7 @@ kbd{font-family:inherit;background:#26272e;border:1px solid #34353d;border-botto
     <button class="btn primaire" data-envoi="ok">Envoyer</button>
   </div>
 </div></div>
+<div id="montage" hidden></div>
 <div class="notif" id="notif"></div>
 
 <script>
@@ -992,6 +995,7 @@ $('#modalImport').addEventListener('click', async e => {
 
 /* ---------- clavier ---------- */
 document.addEventListener('keydown', e => {
+  if (window.MT?.actif) return;
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's'){ e.preventDefault(); enregistrer(); return; }
   if (e.target.matches?.('input, textarea, select')) return;
   if (e.ctrlKey || e.metaKey || e.altKey) return;
@@ -999,6 +1003,7 @@ document.addEventListener('keydown', e => {
   if (k === '?'){ $('#modalAide').classList.toggle('vu'); return; }
   if (k === 'Escape'){ $('#modalAide').classList.remove('vu'); $('#menuExport').classList.remove('ouvert'); $('#modalEnvoi').classList.remove('vu'); if ($('#modalImport').classList.contains('vu')) $('#modalImport').click(); if (etat.modeDessin) quitterDessin(); return; }
   if (k.toLowerCase() === 'b'){ $('#btnBiblio').click(); return; }
+  if (k.toLowerCase() === 't'){ MT.basculer(); return; }
   if (!etat.asset) return;
   const fait = () => e.preventDefault();
   switch (k){
@@ -1042,5 +1047,7 @@ fetch('/api/info').then(r => r.json()).then(i => {
 chargerAssets().then(() => { const h = decodeURIComponent(location.hash.slice(1)); if (h) ouvrir(h); });
 setInterval(() => { if (!document.querySelector('.comm textarea, .repondre, .titre-m:focus, .comm select:focus')) rendreComms(); }, 60000);
 </script>
+<script src="/montage.js"></script>
+<script>$('#btnMontage').onclick = () => MT.basculer();</script>
 </body>
 </html>
