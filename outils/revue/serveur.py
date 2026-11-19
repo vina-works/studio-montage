@@ -1,7 +1,11 @@
 """Salle de revue locale façon Frame.io.
 
-Lance :  python outils/revue/serveur.py --racine "D:\\ep02"   (puis http://localhost:8765)
-Options : --racine <dossier de travail> (défaut : dossier courant)  --port 8765  --no-browser
+Lance :  python outils/revue/serveur.py --racine "D:\\ep02" --session ep02-montage
+Options : --racine <dossier de travail> (défaut : dossier courant)
+          --session <nom> : une salle par conversation Claude ; ses envois vont dans
+                            revue/envois/<nom>.jsonl (sans --session : revue/envois.jsonl)
+          --port 8765 : premier port essayé ; s'il est pris, le suivant libre (jusqu'à +20)
+          --no-browser
 
 - Liste les vidéos et audios du dossier de travail (rendus/, tmp/, shorts/, rush/...).
 - Sert les médias avec les requêtes Range (lecture et saut instantanés, même sur 300 Mo).
@@ -34,15 +38,27 @@ COMMENTAIRES = RACINE / "revue" / "commentaires"
 SAUVEGARDES = RACINE / "revue" / "sauvegardes"
 ENVOIS = RACINE / "revue" / "envois.jsonl"
 CACHE = RACINE / "tmp" / "revue_cache"
+SESSION = ""  # nom de la conversation Claude reliée à cette salle
 
 
-def fixer_racine(dossier: str) -> None:
-    global RACINE, COMMENTAIRES, SAUVEGARDES, ENVOIS, CACHE
+def fixer_racine(dossier: str, session: str = "") -> None:
+    global RACINE, COMMENTAIRES, SAUVEGARDES, ENVOIS, CACHE, SESSION
     RACINE = Path(dossier).resolve()
+    SESSION = session
     COMMENTAIRES = RACINE / "revue" / "commentaires"
     SAUVEGARDES = RACINE / "revue" / "sauvegardes"
-    ENVOIS = RACINE / "revue" / "envois.jsonl"
+    if session:
+        ENVOIS = RACINE / "revue" / "envois" / f"{session}.jsonl"
+    else:
+        ENVOIS = RACINE / "revue" / "envois.jsonl"
     CACHE = RACINE / "tmp" / "revue_cache"
+
+
+def nom_session(brut: str) -> str:
+    nom = re.sub(r"[^\w\-]+", "-", brut.strip()).strip("-")[:60]
+    if brut and not nom:
+        sys.exit("Nom de session invalide : lettres, chiffres, - et _ seulement.")
+    return nom
 
 
 _verrou_envois = threading.Lock()
@@ -56,6 +72,7 @@ def enregistrer_envoi(rel: str, message: str) -> dict:
     comms = [c for c in elements if c.get("type") != "moment"]
     envoi = {
         "envoi": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "session": SESSION or None,
         "media": rel,
         "message": message.replace("\n", " ").strip()[:2000],
         "commentaires_ouverts": sum(1 for c in comms if not c.get("resolu")),
@@ -376,6 +393,9 @@ class Gestionnaire(BaseHTTPRequestHandler):
             return self._fichier(ICI / "index.html", "text/html; charset=utf-8")
         if url.path == "/api/assets":
             return self._json(liste_assets())
+        if url.path == "/api/info":
+            return self._json({"session": SESSION or None, "racine": str(RACINE),
+                               "envois": rel_de(ENVOIS)})
         if url.path == "/api/commentaires":
             f = fichier_commentaires(rel)
             return self._json(json.loads(f.read_text(encoding="utf-8")) if f.exists() else [])
@@ -441,22 +461,30 @@ class ServeurExclusif(ThreadingHTTPServer):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--racine", default=".", help="dossier de travail qui contient les médias")
-    ap.add_argument("--port", type=int, default=8765)
+    ap.add_argument("--session", default="", help="nom de la conversation Claude reliée à cette salle")
+    ap.add_argument("--port", type=int, default=8765, help="premier port essayé")
+    ap.add_argument("--port-exact", action="store_true", help="échouer si --port est pris au lieu d'essayer le suivant")
     ap.add_argument("--no-browser", action="store_true")
     a = ap.parse_args()
     if not Path(a.racine).is_dir():
         sys.exit(f"Dossier introuvable : {a.racine}")
-    fixer_racine(a.racine)
+    fixer_racine(a.racine, nom_session(a.session))
     ENVOIS.parent.mkdir(parents=True, exist_ok=True)
     ENVOIS.touch(exist_ok=True)  # pour que Claude puisse le surveiller dès le départ
     print(f"Dossier de travail : {RACINE}")
-    try:
-        srv = ServeurExclusif(("127.0.0.1", a.port), Gestionnaire)
-    except OSError:
-        sys.exit(f"Le port {a.port} est déjà pris (une autre salle tourne ?). "
-                 f"Fermer l'autre, ou relancer avec --port {a.port + 1}.")
-    url = f"http://localhost:{a.port}"
-    print(f"Salle de revue : {url}   (Ctrl+C pour arrêter)")
+    print(f"Conversation : {SESSION or '(aucune)'}   envois : {ENVOIS}")
+    srv, port = None, a.port
+    for port in [a.port] if a.port_exact else range(a.port, a.port + 21):
+        try:
+            srv = ServeurExclusif(("127.0.0.1", port), Gestionnaire)
+            break
+        except OSError:
+            continue
+    if srv is None:
+        sys.exit(f"Le port {a.port} est déjà pris (une autre salle tourne ?). Fermer l'autre ou changer --port."
+                 if a.port_exact else f"Aucun port libre entre {a.port} et {a.port + 20}.")
+    url = f"http://localhost:{port}"
+    print(f"Salle de revue : {url}   (Ctrl+C pour arrêter)", flush=True)
     if not a.no_browser:
         threading.Timer(0.6, lambda: webbrowser.open(url)).start()
     try:

@@ -5,13 +5,13 @@ Une page web locale, sur le modèle de Frame.io, pour regarder une préécoute o
 ## Pour une nouvelle vidéo
 
 1. **Ranger la vidéo dans un dossier de travail.** La salle liste toutes les vidéos et tous les audios du dossier qu'on lui donne, sous-dossiers compris (`rendus/`, `tmp/`, `shorts/`...). Lui donner le dossier de l'épisode, pas `Téléchargements` ni le disque entier : elle parcourt tout ce qui s'y trouve.
-2. **Lancer la salle** depuis n'importe où :
+2. **Ouvrir la salle.** Le plus simple : dans la conversation Claude qui travaille sur cette vidéo, dire « ouvre la salle de revue sur `D:\ep02` ». Claude la lance pour cette conversation (voir [Une salle par conversation](#une-salle-par-conversation)) et donne l'adresse. À la main :
 
    ```powershell
-   python outils\revue\serveur.py --racine "D:\ep02"
+   python outils\revue\serveur.py --racine "D:\ep02" --session ep02-montage
    ```
 
-   Le navigateur s'ouvre sur http://localhost:8765. Une seule salle par port : si une autre tourne déjà, le serveur le dit et s'arrête ; pour en ouvrir une deuxième en parallèle, ajouter `--port 8766`. `Ctrl+C` dans le terminal l'arrête.
+   Le navigateur s'ouvre sur http://localhost:8765, ou sur le port libre suivant si une autre salle l'occupe déjà (le terminal affiche l'adresse). `Ctrl+C` dans le terminal l'arrête.
 3. **Choisir la vidéo** dans la colonne de gauche. Si un `.srt` du même nom est à côté, les sous-titres s'affichent (touche `S`).
 4. **Regarder vite** : `2` ou `3` pour lire en x2 ou x3, `1` pour revenir. Le son garde sa hauteur.
 5. **Marquer et commenter** (voir plus bas).
@@ -50,13 +50,22 @@ Dans le dossier de travail, jamais dans ce dépôt :
   revue/
     commentaires/   un .json et un .md par vidéo commentée
     sauvegardes/    copies horodatées (Enregistrer, Remplacer)
-    envois.jsonl    une ligne par clic sur « Envoyer à Claude »
+    envois/         un fichier par conversation : une ligne par clic sur « Envoyer à Claude »
   tmp/revue_cache/  miniatures et durées, régénérables
 ```
 
 ## Envoyer à Claude
 
-Le bouton enregistre, puis écrit une ligne dans `revue/envois.jsonl` : la vidéo, le message tapé, le chemin du `.md`. Une session Claude qui surveille ce fichier reçoit l'envoi dans la seconde ; Claude sait le faire (consigne dans le `CLAUDE.md` du dossier de travail). Si aucune session ne surveille, l'envoi attend dans le fichier : dire à Claude « lis mes envois ».
+Le bouton enregistre, puis écrit une ligne dans le fichier d'envois de la salle : la vidéo, le message tapé, le chemin du `.md`. La conversation Claude qui surveille ce fichier reçoit l'envoi dans la seconde ; Claude sait le faire (consigne dans le `CLAUDE.md` du dossier de travail). Si elle ne surveille pas (conversation fermée, surveillance expirée), l'envoi attend dans le fichier : dire à Claude « lis mes envois ».
+
+## Une salle par conversation
+
+Chaque conversation Claude a sa propre salle, lancée avec `--session <nom>`. Ses envois vont dans `revue/envois/<nom>.jsonl`, et seule cette conversation les reçoit. Deux conversations peuvent ainsi travailler en même temps, sur le même dossier ou non, sans recevoir les retours de l'autre.
+
+- Le nom de la conversation s'affiche à côté du logo, dans l'onglet du navigateur et dans la fenêtre d'envoi : vérifier qu'on est dans la bonne salle avant d'envoyer.
+- Chaque salle prend son port (8765, puis 8766...). Garder un onglet par salle.
+- Sans `--session`, les envois vont dans `revue/envois.jsonl`, que n'importe quelle conversation peut lire.
+- Les commentaires, eux, restent communs : ils appartiennent à la vidéo, pas à la conversation. Deux salles ouvertes sur la même vidéo s'écrasent l'une l'autre ; en commenter une seule à la fois.
 
 Claude garde les règles habituelles : il propose un `edit.json` et attend la validation avant tout rendu final.
 
@@ -69,5 +78,5 @@ L'export « Moments forts en edit.json » garde ces timecodes tels quels. Un mom
 ## Limites
 
 - Lecture arrière impossible (le navigateur ne la gère pas) : `J` recule de 5 s, `←` d'une image.
-- Une seule personne à la fois : deux onglets ouverts sur la même vidéo s'écrasent l'un l'autre.
+- Une seule personne à la fois par vidéo : deux onglets ou deux salles ouverts sur la même vidéo s'écrasent l'un l'autre.
 - Formats lus : ceux du navigateur (MP4 H.264, M4A, MP3, WAV, WebM). Un `.mov` en ProRes ne se lit pas ; faire une préécoute H.264 avec `rendu.py --apercu`.

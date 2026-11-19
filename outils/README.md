@@ -39,10 +39,10 @@ $py = "$HOME\.video-env\Scripts\python.exe"
 Page web locale, sur le modèle de Frame.io, pour relire un rendu ou une préécoute et noter les retouches au bon timecode. Aucune dépendance : Python, ffmpeg et ffprobe suffisent. Rien ne quitte la machine.
 
 ```powershell
-python outils\revue\serveur.py --racine "D:\ep02"
+python outils\revue\serveur.py --racine "D:\ep02" --session ep02-montage
 ```
 
-La page s'ouvre sur http://localhost:8765 (`--port` pour changer, `--no-browser` pour ne pas l'ouvrir).
+La page s'ouvre sur http://localhost:8765, ou sur le port libre suivant (jusqu'à +20) si une autre salle l'occupe. Options : `--port` (premier port essayé), `--port-exact` (échouer plutôt que d'en prendre un autre), `--no-browser`. Le port est pris en exclusivité : sous Windows, deux serveurs pouvaient sinon écouter le même. Mode d'emploi complet : [wiki/12](../wiki/12-salle-de-revue.md).
 
 - Bibliothèque : toutes les vidéos et tous les audios du dossier de travail, groupés par dossier, avec miniature, durée et nombre de commentaires ouverts.
 - Lecture : vitesses x0,5, x1, x1,5, x2, x3 (touches `1`, `2`, `3`), image par image (`←` `→`), sauts de 5 s (`J` `L`), sous-titres si un `.srt` de même nom est à côté du média.
@@ -51,7 +51,7 @@ La page s'ouvre sur http://localhost:8765 (`--port` pour changer, `--no-browser`
 - Enregistrement : automatique à chaque modification. « Enregistrer » (`Ctrl+S`) garde en plus une copie horodatée dans `<racine>/revue/sauvegardes/`.
 - Exporter : Markdown dans le presse-papiers (pour Claude), `.md`, `.json` complet réimportable, moments forts en `edit.json` (liste `keep`, base d'un plan de coupe ou de shorts ; un moment ponctuel donne -3 s / +7 s, à ajuster) ou en CSV.
 - Importer : un `.json` exporté par la salle. « Fusionner » ajoute ce qui manque, « Remplacer » écrase après une copie dans `revue/sauvegardes/`. Les champs sont vérifiés à l'import.
-- Envoyer à Claude : enregistre, puis ajoute une ligne à `<racine>/revue/envois.jsonl` (média, compteurs, message facultatif, chemin du `.md`). Une session Claude qui surveille ce fichier (`tail -n 0 -F` lancé avec l'outil Monitor) reçoit l'envoi aussitôt. Sans surveillance, l'envoi attend dans le fichier : demander à Claude de lire les envois.
+- Envoyer à Claude : enregistre, puis ajoute une ligne au fichier d'envois de la salle (média, session, compteurs, message facultatif, chemin du `.md`). Une salle par conversation : avec `--session <nom>`, ce fichier est `<racine>/revue/envois/<nom>.jsonl` et seule la conversation qui le surveille (`tail -n 0 -F` lancé avec l'outil Monitor) reçoit l'envoi ; sans `--session`, c'est `<racine>/revue/envois.jsonl`. `GET /api/info` donne la session et le chemin du fichier. Sans surveillance, l'envoi attend dans le fichier : demander à Claude de lire les envois.
 - Sortie : `<racine>/revue/commentaires/<chemin_du_media>.json` (commentaires et moments, `type: "moment"` pour ces derniers, `t` et `fin` en secondes) et un `.md` lisible, réécrits à chaque modification.
 
 Les timecodes se rapportent au média commenté. Un commentaire posé sur un rendu se convertit en temps source avec son `edit.json`.

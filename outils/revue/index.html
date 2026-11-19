@@ -361,7 +361,7 @@ kbd{font-family:inherit;background:#26272e;border:1px solid #34353d;border-botto
   <h2>Envoyer à Claude</h2>
   <p id="resumeEnvoi"></p>
   <div class="zone" style="margin-top:12px"><textarea id="messageEnvoi" placeholder="Ce que tu veux que Claude en fasse (facultatif). Ex : fais le plan de coupe, prépare des shorts avec les moments 4 étoiles…"></textarea></div>
-  <p style="font-size:12px;margin-top:10px">Claude le reçoit tout de suite si sa session surveille la salle. Sinon, l'envoi reste dans <code>revue/envois.jsonl</code> : dis-lui « lis mes envois ».</p>
+  <p style="font-size:12px;margin-top:10px">Claude le reçoit tout de suite si sa conversation surveille cette salle. Sinon, l'envoi reste dans <code id="cheminEnvois">revue/envois.jsonl</code> : dis-lui « lis mes envois ».</p>
   <div class="choix">
     <button class="btn" data-envoi="annuler">Annuler</button>
     <button class="btn primaire" data-envoi="ok">Envoyer</button>
@@ -489,7 +489,7 @@ async function ouvrir(chemin){
   inf.textContent = [a.hauteur?`${a.largeur}×${a.hauteur}`:'audio', a.hauteur?`${a.fps} i/s`:'', duree(a.duree)].filter(Boolean).join(', ');
   $('#saisie').disabled = false;
   ['#btnEnregistrer','#btnImporter','#btnExporter','#btnEnvoyerClaude'].forEach(s => $(s).disabled = false);
-  document.title = a.nom + ' | Salle de revue';
+  document.title = a.nom + (etat.session ? ' | ' + etat.session : ' | Salle de revue');
   etat.comms = await (await fetch('/api/commentaires?p='+encodeURIComponent(chemin))).json();
   majEtatSave('ok', 'Enregistré');
   rendreAssets(); rendreComms(); rendreMarqueurs(); majIO(); majTemps();
@@ -908,7 +908,9 @@ $('#btnEnvoyerClaude').onclick = () => {
   if (!etat.asset) return;
   video.pause();
   const cs = commsSeuls(), ouverts = cs.filter(c => !c.resolu).length, nm = momentsSeuls().length;
-  $('#resumeEnvoi').innerHTML = `<b>${esc(etat.asset.nom)}</b> : ${ouverts} commentaire(s) ouvert(s) sur ${cs.length}, ${nm} moment(s) fort(s).`;
+  $('#resumeEnvoi').innerHTML = `<b>${esc(etat.asset.nom)}</b> : ${ouverts} commentaire(s) ouvert(s) sur ${cs.length}, ${nm} moment(s) fort(s).`
+    + `<br>Destinataire : ${etat.session ? `la conversation <b>${esc(etat.session)}</b>` : 'aucune conversation précise (salle lancée sans --session)'}.`;
+  $('#cheminEnvois').textContent = etat.fichierEnvois || 'revue/envois.jsonl';
   $('#modalEnvoi').classList.add('vu'); $('#messageEnvoi').focus();
 };
 async function confirmerEnvoi(){
@@ -919,7 +921,7 @@ async function confirmerEnvoi(){
   const r = await fetch('/api/envoyer?p='+encodeURIComponent(etat.asset.chemin), {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({message})}).then(r => r.json()).catch(() => null);
   if (!r?.ok) return notif('Envoi impossible : le serveur tourne-t-il ?');
   $('#messageEnvoi').value = '';
-  notif('Envoyé à Claude (' + r.envoi.slice(11, 16) + ')');
+  notif('Envoyé à ' + (etat.session ? '« ' + etat.session + ' »' : 'Claude') + ' (' + r.envoi.slice(11, 16) + ')');
 }
 $('#modalEnvoi').addEventListener('click', e => {
   const b = e.target.closest('[data-envoi]');
@@ -1031,6 +1033,12 @@ window.addEventListener('beforeunload', () => { if (etat.asset) stock.set('pos:'
 
 /* ---------- démarrage ---------- */
 rendreFiltre(); rendreCats(); rendreComms();
+fetch('/api/info').then(r => r.json()).then(i => {
+  etat.session = i.session; etat.fichierEnvois = i.envois;
+  const b = $('#btnEnvoyerClaude');
+  b.title = i.session ? `Envoyer à la conversation Claude « ${i.session} »` : 'Envoyer à Claude (aucune conversation reliée : lancer la salle avec --session)';
+  if (i.session) document.querySelector('.logo').insertAdjacentHTML('beforeend', ` <span class="chip" title="Les envois de cette salle vont à cette conversation Claude">${esc(i.session)}</span>`);
+}).catch(() => {});
 chargerAssets().then(() => { const h = decodeURIComponent(location.hash.slice(1)); if (h) ouvrir(h); });
 setInterval(() => { if (!document.querySelector('.comm textarea, .repondre, .titre-m:focus, .comm select:focus')) rendreComms(); }, 60000);
 </script>
