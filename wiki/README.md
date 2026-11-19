@@ -15,5 +15,6 @@ Tout ce qui a été appris en montant l'épisode 1 (octobre 2026). Chaque page d
 | [09. Thème](../theme/README.md) | Couleurs, polices et signature des panneaux et des shorts |
 | [10. Pièges](10-pieges.md) | Les erreurs déjà faites, avec leur symptôme |
 | [11. Travailler avec Claude](11-travailler-avec-claude.md) | Comment briefer, ce qu'il vérifie seul, ce qu'il faut écouter soi-même |
+| [12. Salle de revue](12-salle-de-revue.md) | Regarder en x2 ou x3, commenter au timecode, marquer les moments forts, envoyer à Claude |
 
 Modèles prêts à copier : [`modeles/`](../modeles/).

@@ -5,7 +5,7 @@ Un studio de montage par transcript. On monte des podcasts et des vidéos face c
 Ce dépôt contient quatre choses :
 
 - [`wiki/`](wiki/README.md) : la méthode, les réglages qui marchent, les pièges déjà rencontrés et les retours d'écoute. C'est le point d'entrée.
-- [`outils/`](outils/README.md) : les scripts Python, réutilisables d'un épisode à l'autre.
+- [`outils/`](outils/README.md) : les scripts Python, réutilisables d'un épisode à l'autre, dont la [salle de revue](wiki/12-salle-de-revue.md) pour commenter les préécoutes et marquer les moments forts.
 - [`modeles/`](modeles/) : plan éditorial, brief du chef monteur, brief des shorts.
 - [`episodes/`](episodes/README.md) : le dossier de chaque épisode (plans, `edit.json`, specs des shorts et des panneaux, journal des décisions). Il reste en local : git ignore tout son contenu.
 

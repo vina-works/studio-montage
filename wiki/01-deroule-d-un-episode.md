@@ -8,11 +8,11 @@ Chaque étape produit un fichier qu'on peut relire. Rien n'est rendu en version 
 | 2 | Plan éditorial | transcription | `plan_editorial.md` : ce qu'on garde, l'ordre, le cold open, les coupes | l'auteur, ou Claude puis validation |
 | 3 | Rythme | plan éditorial | `edit.json` : segments à garder, pauses resserrées, hésitations coupées | `outils/rythme.py` |
 | 4 | Préécoute | `edit.json` | audio puis vidéo 720p dans `tmp/` | `outils/rendu.py --apercu` |
-| 5 | Retours | préécoute | corrections de `edit.json` | l'auteur donne des timestamps de sortie |
+| 5 | Retours | préécoute | corrections de `edit.json` | l'auteur commente dans la [salle de revue](12-salle-de-revue.md) (timestamps de sortie) |
 | 6 | Illustrations | moments à vulgariser | panneaux PNG 960x1080 | `outils/panneaux.py` |
 | 7 | Rendu final | `edit.json` validé | MP4 1080p dans `rendus/`, `.srt` à côté | `outils/rendu.py` |
 | 8 | Vérification | rendu | durée, synchro, mots mangés, liste des raccords à écouter | `outils/verifier.py` |
-| 9 | Shorts | brief shorts | MP4 9:16 et légendes | `outils/shorts.py` |
+| 9 | Shorts | brief shorts, moments forts marqués dans la salle de revue | MP4 9:16 et légendes | `outils/shorts.py` |
 
 ## Ce qui a pris du temps sur l'épisode 1
 
@@ -33,6 +33,7 @@ On numérote les préécoutes (`preecoute_v2.mp4`, `v3`) et on garde la précéd
   tmp/               préécoutes, fichiers intermédiaires
   illustrations/     panneaux HTML et PNG
   shorts/            specs et cadrages des shorts
+  revue/             commentaires et moments forts de la salle de revue
 ```
 
 La source n'est jamais modifiée ni écrasée.

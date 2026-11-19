@@ -17,6 +17,7 @@ import mimetypes
 import os
 import re
 import shutil
+import socket
 import subprocess
 import sys
 import threading
@@ -426,6 +427,17 @@ class Gestionnaire(BaseHTTPRequestHandler):
         self._json({"ok": True, "n": len(comms)})
 
 
+class ServeurExclusif(ThreadingHTTPServer):
+    """Refuse un port déjà pris : sous Windows, SO_REUSEADDR laisserait deux salles l'écouter."""
+    allow_reuse_address = False
+    daemon_threads = True
+
+    def server_bind(self):
+        if hasattr(socket, "SO_EXCLUSIVEADDRUSE"):
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+        super().server_bind()
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--racine", default=".", help="dossier de travail qui contient les médias")
@@ -438,7 +450,11 @@ def main():
     ENVOIS.parent.mkdir(parents=True, exist_ok=True)
     ENVOIS.touch(exist_ok=True)  # pour que Claude puisse le surveiller dès le départ
     print(f"Dossier de travail : {RACINE}")
-    srv = ThreadingHTTPServer(("127.0.0.1", a.port), Gestionnaire)
+    try:
+        srv = ServeurExclusif(("127.0.0.1", a.port), Gestionnaire)
+    except OSError:
+        sys.exit(f"Le port {a.port} est déjà pris (une autre salle tourne ?). "
+                 f"Fermer l'autre, ou relancer avec --port {a.port + 1}.")
     url = f"http://localhost:{a.port}"
     print(f"Salle de revue : {url}   (Ctrl+C pour arrêter)")
     if not a.no_browser:

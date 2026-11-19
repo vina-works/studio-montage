@@ -15,6 +15,8 @@ Donner tout de suite :
 
 Des timestamps de sortie et une intention, en une ligne chacun : « sur la présentation du deuxième invité, plus de naturel », « 14:50 : il manque la fin de sa phrase », « le nom du quiz on s'en fout ». Claude corrige `edit.json`, refait une préécoute, et la vérifie par retranscription.
 
+Le plus simple est de les poser dans la [salle de revue](12-salle-de-revue.md) : chaque commentaire est attaché au bon timecode, et le bouton « Envoyer à Claude » lui transmet tout, avec une consigne (« corrige ces points », « propose des shorts avec les moments 3 étoiles »).
+
 ## Ce que Claude vérifie seul
 
 - Durées et synchro image/son (`ffprobe` par piste).
