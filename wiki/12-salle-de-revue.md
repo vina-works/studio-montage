@@ -70,6 +70,7 @@ Le bouton « Montage » (touche `T`) ouvre une timeline éditable du dernier pla
 | Glisser une carte | La déplacer ; elle reste attachée au plan sous elle. Tirer son bord droit : la rallonger |
 | `Ctrl`+`Z` / `Ctrl`+`Maj`+`Z` | Annuler / rétablir |
 | `+` / `-`, `Espace`, `←` `→` | Zoom, lecture, image par image (`Maj` : 1 s) |
+| Boutons `1x` à `3x`, touches `1` `2` `3` (`4` = x1,5) | Vitesse de l'aperçu, gardée d'une session à l'autre ; la voix garde sa hauteur |
 
 Une piste « Repères » montre les commentaires et moments forts posés dans la revue, sur les rendus comme sur les prises, ramenés à leur place dans le montage (un plan de coupe liste ses rendus dans `rendus`). Ceux qui tombent sur un passage coupé sont grisés et posés au raccord. `M` pose un repère à la main ; l'onglet « Repères » les liste tous.
 

@@ -15,6 +15,8 @@ const MT = window.MT = { actif: false };
 const COUL = ['#5a52e0', '#2b86c9', '#b0527a', '#3f9a6d'];
 const CATS = { fort: ['Moment fort', '#ffb020'], short: ['Idée de short', '#b06cff'], citation: ['Citation', '#3ea8ff'], rire: ['Rire', '#2fd27a'], couper: ['À couper', '#ff4d5e'] };
 let M = null, drag = null, tSave = null;
+const VITESSES_MT = [1, 1.5, 2, 3];
+let vitesseMt = VITESSES_MT.includes(+stock.get('mtVitesse', 1)) ? +stock.get('mtVitesse', 1) : 1;
 
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 const fmt = s => { s = Math.max(0, s || 0); const m = Math.floor(s / 60), r = s - m * 60; return m + ':' + r.toFixed(2).padStart(5, '0'); };
@@ -147,6 +149,8 @@ function construireScene() {
   M.sources.forEach(s => {
     const v = document.createElement('video'); v.preload = 'auto'; v.playsInline = true;
     v.src = '/media?p=' + encodeURIComponent(s); v.style.display = 'none';
+    v.preservesPitch = true;
+    v.addEventListener('loadedmetadata', () => { v.playbackRate = vitesseMt; });
     sc.appendChild(v); M.vids[s] = v;
   });
   M.overlays.forEach(o => {
@@ -175,11 +179,21 @@ function jouer() {
   if (M.t >= M.total - 0.05) allerA(0);
   M.playing = true; M.vids[M.cur.src].play().catch(() => {}); q('#mtPlay').textContent = 'Pause'; requestAnimationFrame(boucle);
 }
+/* vitesse de lecture de l'aperçu (x1 à x3), gardée d'une session à l'autre */
+function setVitesseMt(v) {
+  vitesseMt = v; stock.set('mtVitesse', v);
+  if (M) Object.values(M.vids).forEach(x => { x.preservesPitch = true; x.playbackRate = v; });
+  rendreVitessesMt(); toast('x' + String(v).replace('.', ','));
+}
+function rendreVitessesMt() {
+  const n = q('#mtVitesses'); if (!n) return;
+  n.innerHTML = VITESSES_MT.map(v => `<button data-v="${v}" class="${v === vitesseMt ? 'sel' : ''}">${String(v).replace('.', ',')}x</button>`).join('');
+}
 function pause() { if (!M) return; M.playing = false; Object.values(M.vids).forEach(v => v.pause()); q('#mtPlay').textContent = 'Lecture'; }
 function boucle() {
   if (!M?.playing) return;
   const c = M.cur, v = M.vids[c.src], ts = v.currentTime;
-  if (ts >= c.b - 0.01 || v.ended) {
+  if (ts >= c.b - 0.01 * vitesseMt || v.ended) {
     const i = M.clips.indexOf(c), n = M.clips[i + 1];
     if (!n) { pause(); M.t = M.total; majVue(); return; }
     M.cur = n; M.t = n.o;
@@ -452,6 +466,7 @@ function construire() {
     <div class="mt-transport">
       <button class="btn primaire" id="mtPlay">Lecture</button>
       <span class="mt-tc" id="mtTc"></span>
+      <div class="vitesses" id="mtVitesses" title="Vitesse : touches 1, 2, 3 (x1, x2, x3), 4 = x1,5"></div>
       <span class="sep"></span>
       <button class="btn" id="mtCut" title="Couper le plan à la tête de lecture (S)">Couper <kbd>S</kbd></button>
       <button class="btn" id="mtDel" title="Supprimer le plan, la carte ou le repère sélectionné (Suppr)">Supprimer <kbd>Suppr</kbd></button>
@@ -472,6 +487,8 @@ function construire() {
   </div>
   <aside class="mt-side"><h3><span class="mt-tabs"><button id="mtOngEdition" class="sel">Édition</button><button id="mtOngReperes">Repères</button></span><span style="flex:1"></span><button class="btn" id="mtFermer" title="Retour à la revue (T)">Fermer</button></h3><div class="corps" id="mtInsp"></div></aside>`;
   q('#mtPlay').onclick = () => M?.playing ? pause() : jouer();
+  rendreVitessesMt();
+  q('#mtVitesses').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setVitesseMt(+b.dataset.v); });
   q('#mtCut').onclick = () => M && couper(); q('#mtDel').onclick = () => M && supprimer();
   q('#mtUndo').onclick = () => M && annuler(); q('#mtRedo').onclick = () => M && retablir();
   q('#mtMark').onclick = () => M && ajouterRepere();
@@ -521,6 +538,7 @@ window.addEventListener('keydown', e => {
   if (mod || e.altKey || !M) return;
   const k = e.key;
   if (k === ' ' || k === 'k' || k === 'K') { e.preventDefault(); M.playing ? pause() : jouer(); }
+  else if (k === '1' || k === '2' || k === '3' || k === '4' || k === '0') { e.preventDefault(); setVitesseMt({ 1: 1, 2: 2, 3: 3, 4: 1.5, 0: 1 }[k]); }
   else if (k === 's' || k === 'S') { e.preventDefault(); couper(); }
   else if (k === 'm' || k === 'M') { e.preventDefault(); ajouterRepere(); }
   else if (k === 'Delete' || k === 'Backspace') { e.preventDefault(); supprimer(); }
