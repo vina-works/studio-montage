@@ -91,3 +91,25 @@
 .mt-st{position:absolute;left:8%;right:8%;bottom:9cqh;z-index:6;text-align:center;font-family:Arial,sans-serif;font-weight:700;font-size:4.6cqh;line-height:1.18;color:#fff;
   text-shadow:-2px -2px 0 #000,2px -2px 0 #000,-2px 2px 0 #000,2px 2px 0 #000,0 2px 0 #000,0 -2px 0 #000,2px 0 0 #000,-2px 0 0 #000;text-wrap:balance;pointer-events:none}
 .mt-scene .mt-badge{z-index:7}
+
+.mt-scene-wrap{container-type:size}
+.mt-scene.wide{width:min(100cqw,calc(100cqh * 16 / 9));height:auto;aspect-ratio:16/9;background:#181819}
+.mt-video-frame{position:absolute;inset:0;width:100%;height:100%;overflow:hidden;z-index:1}
+.mt-video-frame video{inset:0 auto auto 0;background:transparent;object-fit:fill}
+.mt-video-frame.pip{inset:auto 3% 4% auto;width:26%;height:auto;aspect-ratio:16/9;z-index:3;background:#181819;border:1px solid #555;border-radius:4px}
+.mt-scene.wide img{object-fit:contain}
+.mt-scene.wide img.mode-full,.mt-scene.wide img.mode-pip{background:#181819}
+.mt-scene.wide img.mode-full{z-index:4}
+.mt-scene.wide img.mode-side{inset:0 0 0 var(--split,50%);width:calc(100% - var(--split,50%));height:100%;background:#1c1d21}
+.mt-scene.wide img.mode-lower,.mt-scene.wide img.mode-right{inset:auto auto 5% 3%;width:38%;height:16%;object-position:left bottom}
+.mt-scene.wide img.mode-right{left:auto;right:3%;object-position:right bottom}
+.mt-add-visuel{position:relative;z-index:8}
+.mt-add-visuel summary{cursor:pointer;white-space:nowrap;list-style:none}
+.mt-add-choix{position:absolute;top:calc(100% + 4px);left:0;display:grid;gap:4px;padding:6px;min-width:120px;background:var(--panel);border:1px solid var(--line2);border-radius:6px}
+.mt-add-choix .btn{text-align:left}
+.mt-visuel-mode{display:grid;gap:4px}
+.mt-visuel-mode select{width:100%;background:var(--panel2);color:var(--txt);border:1px solid var(--line2);border-radius:6px;padding:5px 7px}
+.mt-visuels{max-height:46vh;overflow:auto}
+.mt-liste-visuel{width:100%;display:grid;grid-template-columns:51px 1fr auto;align-items:center;gap:7px;padding:7px 4px;border-bottom:1px solid var(--line);text-align:left;font-size:12px;cursor:pointer}
+.mt-liste-visuel:hover,.mt-liste-visuel:focus-visible{background:var(--panel2)}
+.mt-liste-visuel span:first-child,.mt-liste-visuel small{color:var(--txt3);font-size:10px;white-space:nowrap}

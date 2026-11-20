@@ -23,6 +23,14 @@ const fmt = s => { s = Math.max(0, s || 0); const m = Math.floor(s / 60), r = s 
 const strip = c => ({ id: c.id, src: c.src, a: +c.a.toFixed(3), b: +c.b.toFixed(3), why: c.why || '' });
 const dureeSrc = src => (etat.assets.find(a => a.chemin === src)?.duree) || 1e9;
 const court = s => String(s || '').replace(/^.*[\\/]/, '').replace(/^2026-11-19 /, '').replace('.mp4', '');
+const TYPES_VISUEL = { P: 'Carte', S: 'Capture', T: 'Bandeau' };
+const MODES_VISUEL = {
+  P: { side: 'À côté de la vidéo', full: 'Plein écran' },
+  S: { pip: 'Avec l’intervenant en vignette', full: 'Plein écran' },
+  T: { lower: 'En bas à gauche', right: 'En bas à droite', side: 'À côté de la vidéo' },
+};
+const modeVisuel = o => o.mode || Object.keys(MODES_VISUEL[o.kind] || {})[0];
+const nomVisuel = o => o.label || o.id;
 
 /* ---------- données ---------- */
 function layout() { let o = 0; for (const c of M.clips) { c.o = o; c.d = c.b - c.a; o += c.d; } M.total = o; }
@@ -130,7 +138,7 @@ async function charger() {
   const d = await (await fetch('/api/montage?p=' + encodeURIComponent(f))).json();
   const base = d.manuel || null;
   M = {
-    f, edit: d.edit, sources: d.edit.sources || [...new Set(d.edit.keep.map(k => k.source))],
+    f, edit: d.edit, images: new Map(), sources: d.edit.sources || [...new Set(d.edit.keep.map(k => k.source))],
     clips: (base?.keep || d.edit.keep).map(k => ({ id: uid(), src: k.source, a: k.start, b: k.end, why: k.why || '' })),
     overlays: (base?.overlays || d.overlays || []).map(o => ({ ...o })),
     marks: (base?.reperes || []).map(m => ({ ...m })), rep: d.reperes || [],
@@ -146,18 +154,74 @@ async function charger() {
 }
 function construireScene() {
   const sc = q('#mtScene'); sc.innerHTML = '';
+  sc.classList.toggle('wide', M.edit.habillage === true);
+  q('#mtAddVisuel').hidden = !M.edit.habillage;
+  const image = M.edit.habillage ? document.createElement('div') : sc;
+  if (image !== sc) {
+    image.className = 'mt-video-frame';
+    sc.appendChild(image);
+  }
   M.sources.forEach(s => {
     const v = document.createElement('video'); v.preload = 'auto'; v.playsInline = true;
     v.src = '/media?p=' + encodeURIComponent(s); v.style.display = 'none';
     v.preservesPitch = true;
     v.addEventListener('loadedmetadata', () => { v.playbackRate = vitesseMt; });
-    sc.appendChild(v); M.vids[s] = v;
+    image.appendChild(v); M.vids[s] = v;
   });
-  M.overlays.forEach(o => {
-    const im = document.createElement('img'); im.dataset.ov = o.id; im.src = '/img?p=' + encodeURIComponent(o.img || ''); sc.appendChild(im);
-  });
-  M.overlays.forEach(o => { const im = sc.querySelector(`img[data-ov="${o.id}"]`); if (im) im.classList.add('k' + o.kind); });
   sc.insertAdjacentHTML('beforeend', '<div class="mt-st" id="mtSt"></div><div class="mt-badge">Aperçu du montage</div>');
+}
+
+function synchroniserVisuels() {
+  const actifs = new Set(M.overlays.map(o => o.id));
+  for (const [id, im] of M.images) {
+    if (!actifs.has(id)) { im.remove(); M.images.delete(id); }
+  }
+  for (const o of M.overlays) {
+    let im = M.images.get(o.id);
+    if (!im) {
+      im = document.createElement('img'); im.alt = ''; im.dataset.ov = o.id;
+      q('#mtScene').appendChild(im); M.images.set(o.id, im);
+    }
+    const src = /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(o.img)
+      ? o.img : '/img?p=' + encodeURIComponent(o.img || '');
+    if (im.getAttribute('src') !== src) im.setAttribute('src', src);
+    im.className = 'k' + o.kind;
+    if (M.edit.habillage) im.classList.add('mode-' + modeVisuel(o));
+  }
+}
+
+function placerPlateau(v, lateral, capture, plein) {
+  if (!M.edit.habillage) {
+    v.classList.toggle('pip', capture && !plein);
+    return;
+  }
+  const cadre = v.parentElement;
+  cadre.classList.toggle('pip', capture && !plein);
+  const parDefaut = [0, 0, 1280, 720];
+  const t = M.cur.a + M.t - M.cur.o;
+  const cadrage = lateral && !capture && !plein
+    ? (M.edit.recadrages?.find(r => r.src === M.cur.src && t >= r.a && t < r.b)?.rect || parDefaut)
+    : null;
+  if (!cadrage) {
+    cadre.removeAttribute('style');
+    for (const p of ['left', 'top', 'width', 'height']) v.style.removeProperty(p);
+    return;
+  }
+  const [x, y, w, h] = cadrage;
+  const gauche = clamp(lateral.split || 640, 320, 960);
+  const k = Math.min(gauche / w, 720 / h);
+  Object.assign(cadre.style, {
+    left: `${(gauche - k * w) / 25.6}%`,
+    top: `${(720 - k * h) / 14.4}%`,
+    width: `${k * w / 12.8}%`,
+    height: `${k * h / 7.2}%`,
+  });
+  Object.assign(v.style, {
+    left: `${-100 * x / w}%`,
+    top: `${-100 * y / h}%`,
+    width: `${128000 / w}%`,
+    height: `${72000 / h}%`,
+  });
 }
 
 /* ---------- aperçu ---------- */
@@ -207,21 +271,27 @@ function boucle() {
 function majVue(suivre) {
   const tete = q('#mtTete'); if (tete) tete.style.left = (M.t * M.pxs) + 'px';
   q('#mtTc').innerHTML = `<b>${fmt(M.t)}</b> / ${fmt(M.total)}`;
-  const sc = q('#mtScene');
-  let capture = false;
+  let capture = false, plein = false, lateral = null;
   for (const o of M.overlays) {
-    const im = sc.querySelector(`img[data-ov="${o.id}"]`); if (!im) continue;
+    const im = M.images.get(o.id); if (!im) continue;
     const e = ovTemps(o), vu = !!e && M.t >= e.S && M.t < e.E;
     im.classList.toggle('vu', vu);
     if (!vu) continue;
-    if (o.kind === 'S') { capture = true; im.style.opacity = clamp(Math.min((M.t - e.S) / 0.25, (e.E - M.t) / 0.25), 0, 1); im.style.transform = ''; }
+    if (M.edit.habillage) {
+      const mode = modeVisuel(o);
+      im.style.transform = '';
+      im.style.opacity = 1;
+      if (mode === 'side') { lateral = o; im.style.setProperty('--split', `${clamp(o.split || 640, 320, 960) / 12.8}%`); }
+      else if (mode === 'pip') capture = true;
+      else if (mode === 'full') plein = true;
+    } else if (o.kind === 'S') { capture = true; im.style.opacity = clamp(Math.min((M.t - e.S) / 0.25, (e.E - M.t) / 0.25), 0, 1); im.style.transform = ''; }
     else {
       const p = clamp(Math.min((M.t - e.S) / 0.3, (e.E - M.t) / 0.3), 0, 1);
       im.style.opacity = 1; im.style.transform = `translateX(${(o.kind === 'P' ? 1 : -1) * (1 - p) * (o.kind === 'P' ? 43 : 47)}%)`;
     }
   }
   const v = M.cur && M.vids[M.cur.src];
-  if (v) v.classList.toggle('pip', capture);
+  if (v) placerPlateau(v, lateral, capture, plein);
   const st = q('#mtSt');
   if (st) {
     const cue = M.sousTitres && M.cues ? M.cues.find(c => M.t >= c.a && M.t < c.b) : null;
@@ -237,6 +307,7 @@ function majVue(suivre) {
 
 /* ---------- timeline ---------- */
 function rendre() {
+  synchroniserVisuels();
   layout(); calculerSousTitres();
   const px = M.pxs, W = Math.ceil(M.total * px) + 80;
   const pas = px >= 12 ? 5 : px >= 5 ? 10 : 30;
@@ -250,7 +321,7 @@ function rendre() {
   const ovs = k => M.overlays.filter(o => k.includes(o.kind)).map(o => {
     const e = ovTemps(o);
     if (!e) return '';
-    return `<div class="mt-ov ${o.kind} ${M.selOv === o.id ? 'sel' : ''}" data-ov="${o.id}" style="left:${e.S * px}px;width:${Math.max(6, (e.E - e.S) * px)}px" title="${esc(o.id + ' : ' + fmt(e.S) + ' → ' + fmt(e.E))}">${esc(o.id)}<i class="hd"></i></div>`;
+    return `<div class="mt-ov ${o.kind} ${M.selOv === o.id ? 'sel' : ''}" data-ov="${esc(o.id)}" style="left:${e.S * px}px;width:${Math.max(6, (e.E - e.S) * px)}px" title="${esc(nomVisuel(o) + ' : ' + fmt(e.S) + ' → ' + fmt(e.E))}">${esc(nomVisuel(o))}<i class="hd"></i></div>`;
   }).join('');
   const reps = tousRepères().map(r => {
     const col = couleurRep(r), titre = [fmt(r.S), r.type === 'moment' ? (CATS[r.cat] || CATS.fort)[0] : r.type === 'repère' ? 'Repère' : 'Commentaire', r.texte, r.dehors ? '(passage coupé)' : ''].filter(Boolean).join(' : ');
@@ -261,7 +332,10 @@ function rendre() {
   q('#mtCanvas').innerHTML = `<div class="mt-regle" id="mtRegle" style="width:${W}px">${ticks}</div>
     <div class="mt-lane rep" style="width:${W}px"><span class="lbl">Repères</span>${reps}</div>
     <div class="mt-piste" style="width:${W}px">${clips}</div>
-    <div class="mt-lane" style="width:${W}px"><span class="lbl">Cartes et captures</span>${ovs(['P', 'S'])}</div>
+    ${M.edit.habillage
+      ? `<div class="mt-lane" style="width:${W}px"><span class="lbl">Cartes</span>${ovs(['P'])}</div>
+         <div class="mt-lane" style="width:${W}px"><span class="lbl">Captures</span>${ovs(['S'])}</div>`
+      : `<div class="mt-lane" style="width:${W}px"><span class="lbl">Cartes et captures</span>${ovs(['P', 'S'])}</div>`}
     <div class="mt-lane" style="width:${W}px"><span class="lbl">Bandeaux</span>${ovs(['T'])}</div>
     <div class="mt-tete" id="mtTete" style="left:${M.t * px}px"></div>`;
   majPanneau(); majVue();
@@ -281,7 +355,8 @@ function demarrer(e) {
   }
   if (ovEl) {
     const o = M.overlays.find(x => x.id === ovEl.dataset.ov), t = ovTemps(o);
-    M.selOv = o.id; M.sel = null; M.selRep = null; snapshot();
+    M.selOv = o.id; M.sel = null; M.selRep = null; M.onglet = 'edition'; snapshot();
+    if (!M.playing && !h) allerA(Math.min(t.S + 0.32, (t.S + t.E) / 2));
     drag = { type: h ? 'ovD' : 'ovM', o, x0: e.clientX, S0: t.S, d0: o.d, mod: false };
     rendre(); return;
   }
@@ -304,10 +379,10 @@ function bouger(e) {
   } else if (drag.type === 'trimR') {
     let b = clamp(drag.b0 + dx, drag.a0 + 0.2, dureeSrc(drag.c.src)); b = aimanter(drag.c.src, b, 'end'); drag.c.b = clamp(b, drag.a0 + 0.2, dureeSrc(drag.c.src));
   } else if (drag.type === 'ovD') {
-    drag.o.d = Math.max(1, +(drag.d0 + dx).toFixed(2));
+    drag.o.d = Math.max(M.edit.habillage ? 1 / (M.edit.fps || FPS) : 1, +(drag.d0 + dx).toFixed(3));
   } else if (drag.type === 'ovM' || drag.type === 'markM') {
     const S = clamp(drag.S0 + dx, 0, Math.max(0, M.total - 0.05)), r = toSrc(S), cible = drag.o || drag.m;
-    if (r) { cible.src = r.clip.src; cible.at = +(r.clip.a + (S - r.clip.o)).toFixed(2); }
+    if (r) { cible.src = r.clip.src; cible.at = +(r.clip.a + (S - r.clip.o)).toFixed(3); }
   }
   rendre(); allerA(M.t);
 }
@@ -356,6 +431,48 @@ function original() {
 }
 function zoom(p) { M.pxs = clamp(p, 1, 30); stock.set('mt.pxs', M.pxs); q('#mtZoom').value = M.pxs; rendre(); }
 
+async function chargerImageVisuel(file) {
+  if (!file || !['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
+    throw new Error('Choisis une image PNG, JPEG ou WebP.');
+  }
+  const im = await createImageBitmap(file);
+  try {
+    const k = Math.min(1, 1920 / im.width, 1080 / im.height);
+    const ca = document.createElement('canvas');
+    ca.width = Math.max(1, Math.round(k * im.width));
+    ca.height = Math.max(1, Math.round(k * im.height));
+    ca.getContext('2d').drawImage(im, 0, 0, ca.width, ca.height);
+    return ca.toDataURL('image/webp', 0.92);
+  } finally { im.close(); }
+}
+
+async function importerVisuel(kind, original = null) {
+  const input = q('#mtFileVisuel');
+  const montage = M;
+  const depart = Math.min(M.t, Math.max(0, M.total - 0.05));
+  input.value = '';
+  input.onchange = async () => {
+    const file = input.files[0];
+    if (!file) return;
+    try {
+      const img = await chargerImageVisuel(file);
+      if (M !== montage) return;
+      if (original && !M.overlays.includes(original)) return;
+      const r = toSrc(depart);
+      if (!r) return;
+      snapshot();
+      if (original) original.img = img;
+      else {
+        const ov = { id: uid(), label: file.name.replace(/\.[^.]+$/, ''), kind, src: r.clip.src,
+          at: +(r.clip.a + depart - r.clip.o).toFixed(3), d: Math.min(6, M.total - depart), img };
+        M.overlays.push(ov); M.selOv = ov.id; M.sel = null; M.selRep = null;
+      }
+      M.onglet = 'edition'; rendre(); planifier();
+    } catch (err) { notif(err?.message || 'Impossible d’ouvrir cette image.'); }
+  };
+  input.click();
+}
+
 /* ---------- panneau de droite ---------- */
 function majPanneau() {
   if (!M) return;
@@ -377,12 +494,24 @@ function majPanneau() {
     q('#mtLabel')?.addEventListener('change', ev => { snapshot(); const m = M.marks.find(x => 'mark:' + x.id === r.k); m.label = ev.target.value.trim(); rendre(); planifier(); });
   } else if (o) {
     const e = ovTemps(o);
-    el.innerHTML = `<div class="l">Carte</div><div class="v"><b>${esc(o.id)}</b> (${{ P: 'panneau', S: 'capture de source', T: 'bandeau' }[o.kind]})</div>
-      <div class="rang"><label><span class="l">Début</span><span class="v">${e ? fmt(e.S) : 'hors montage'}</span></label>
-      <label><span class="l">Durée (s)</span><input type="number" step="0.5" min="1" value="${o.d}" id="mtOvD"></label></div>
-      <div class="aide">Glisse la carte pour la déplacer, tire son bord droit pour la rallonger. Elle suit le plan sur lequel elle est posée.</div>
-      <div class="btns"><button class="btn danger" id="mtSup">Supprimer la carte</button></div>`;
-    q('#mtOvD').onchange = ev => { snapshot(); o.d = Math.max(1, +ev.target.value || 1); rendre(); planifier(); };
+    const mini = M.edit.habillage ? 1 / (M.edit.fps || FPS) : 1;
+    el.innerHTML = `<div class="l">${TYPES_VISUEL[o.kind] || 'Visuel'}</div><div class="v"><b>${esc(nomVisuel(o))}</b></div>
+      <div class="rang"><label><span class="l">Début (s)</span>${e ? `<input type="number" step="any" min="0" value="${+e.S.toFixed(3)}" id="mtOvStart">` : 'Hors montage'}</label>
+      <label><span class="l">Durée (s)</span><input type="number" step="any" min="${mini}" value="${+o.d.toFixed(3)}" id="mtOvD"></label></div>
+      ${M.edit.habillage ? `<label class="mt-visuel-mode"><span class="l">Position à l’écran</span><select id="mtOvMode">${Object.entries(MODES_VISUEL[o.kind] || {}).map(([v,t]) => `<option value="${v}" ${v === modeVisuel(o) ? 'selected' : ''}>${t}</option>`).join('')}</select></label>` : ''}
+      <div class="aide">Glisse le visuel pour le déplacer. Tire son bord droit pour régler sa durée.</div>
+      <div class="btns">${M.edit.habillage ? '<button class="btn" id="mtRemplaceVisuel">Remplacer l’image</button>' : ''}<button class="btn danger" id="mtSup">Supprimer le visuel</button></div>`;
+    const debut = q('#mtOvStart');
+    if (debut) debut.onchange = ev => {
+      const t = clamp(+ev.target.value, 0, Math.max(0, M.total - mini)), r = toSrc(t);
+      if (!r || !Number.isFinite(t)) return rendre();
+      snapshot(); o.src = r.clip.src; o.at = +(r.clip.a + t - r.clip.o).toFixed(3);
+      allerA(t + Math.min(0.32, o.d / 2)); rendre(); planifier();
+    };
+    q('#mtOvD').onchange = ev => { snapshot(); o.d = Math.max(mini, +ev.target.value || mini); rendre(); planifier(); };
+    const mode = q('#mtOvMode'), remplacer = q('#mtRemplaceVisuel');
+    if (mode) mode.onchange = ev => { snapshot(); o.mode = ev.target.value; rendre(); planifier(); };
+    if (remplacer) remplacer.onclick = () => importerVisuel(o.kind, o);
   } else if (c) {
     const i = M.clips.indexOf(c);
     el.innerHTML = `<div class="l">Plan ${i + 1} sur ${M.clips.length}</div>
@@ -397,7 +526,12 @@ function majPanneau() {
     q('#mtB').onchange = ev => { const v = +ev.target.value; if (v > c.a + 0.1 && v <= dureeSrc(c.src)) { snapshot(); c.b = v; rendre(); planifier(); } else rendre(); };
     q('#mtAv').onclick = () => deplacer(-1); q('#mtAp').onclick = () => deplacer(1);
   } else {
-    el.innerHTML = `<div class="aide"><b>Comment retoucher</b><br>
+    const visuels = M.edit.habillage ? M.overlays.map(o => ({ o, e: ovTemps(o) }))
+      .filter(v => v.e).sort((a, b) => a.e.S - b.e.S) : [];
+    el.innerHTML = `${visuels.length ? `<div class="l">Visuels dans le montage</div>
+      <div class="mt-visuels">${visuels.map(({ o, e }) => `<button class="mt-liste-visuel" data-visuel-id="${esc(o.id)}">
+      <span>${fmt(e.S)}</span><span>${esc(nomVisuel(o))}</span><small>${TYPES_VISUEL[o.kind] || ''}</small></button>`).join('')}</div>` : ''}
+      <div class="aide"><b>Comment retoucher</b><br>
       Clic sur un plan : le sélectionner et s'y placer.<br>
       Tirer le bord gauche ou droit d'un plan : le raccourcir ou le rallonger. Les plans suivants se recollent tout seuls. L'aimant cale le bord sur les mots.<br>
       <kbd>S</kbd> coupe le plan à la tête de lecture, puis supprime la partie en trop avec <kbd>Suppr</kbd>.<br>
@@ -405,6 +539,12 @@ function majPanneau() {
       <kbd>M</kbd> pose un repère à la tête de lecture.<br>
       <kbd>Espace</kbd> lecture, <kbd>←</kbd> <kbd>→</kbd> image par image (<kbd>Maj</kbd> : 1 s), <kbd>Ctrl</kbd>+<kbd>Z</kbd> annuler, <kbd>Ctrl</kbd>+<kbd>S</kbd> enregistrer avec copie, <kbd>+</kbd> <kbd>-</kbd> zoom.<br><br>
       Les retouches s'enregistrent toutes seules dans <code>revue/montage/</code>. Ensuite : « Envoyer à Claude » pour qu'il rende la nouvelle version.</div>`;
+    el.querySelectorAll('[data-visuel-id]').forEach(button => button.onclick = () => {
+      const o = M.overlays.find(v => v.id === button.dataset.visuelId), e = ovTemps(o);
+      M.selOv = o.id;
+      allerA(e.S + Math.min(0.32, (e.E - e.S) / 2)); rendre();
+      q('#mtScroll').scrollLeft = Math.max(0, e.S * M.pxs - 100);
+    });
   }
   const sup = q('#mtSup'); if (sup) sup.onclick = supprimer;
 }
@@ -436,7 +576,8 @@ async function sauverMontage(copie) {
   const corps = {
     format: 'montage-manuel', base: M.f, sources: M.sources, modifie: new Date().toISOString(), duree: +M.total.toFixed(3),
     keep: M.clips.map(c => ({ source: c.src, start: +c.a.toFixed(3), end: +c.b.toFixed(3), why: c.why || '' })),
-    overlays: M.overlays.map(o => ({ id: o.id, kind: o.kind, src: o.src, at: o.at, d: o.d, img: o.img })),
+    overlays: M.overlays.map(o => ({ id: o.id, kind: o.kind, src: o.src, at: o.at, d: o.d, img: o.img,
+      label: o.label, mode: o.mode, split: o.split })),
     reperes: M.marks.map(m => ({ id: m.id, label: m.label || '', src: m.src, at: m.at })),
   };
   try {
@@ -476,6 +617,10 @@ function construire() {
       <span class="sep"></span>
       <button class="btn" id="mtAimant" title="Caler les bords des plans sur les mots">Aimant</button>
       <button class="btn" id="mtStBtn" title="Sous-titres dans l'aperçu">Sous-titres</button>
+      <details class="mt-add-visuel" id="mtAddVisuel" hidden><summary class="btn">Ajouter un visuel</summary>
+        <div class="mt-add-choix"><button class="btn" data-visuel="P">Carte</button><button class="btn" data-visuel="S">Capture</button><button class="btn" data-visuel="T">Bandeau</button></div>
+      </details>
+      <input type="file" id="mtFileVisuel" accept="image/png,image/jpeg,image/webp" hidden>
       <label style="display:flex;align-items:center;gap:6px;color:var(--txt3);font-size:12px">Zoom <input type="range" id="mtZoom" min="1" max="30" step="1" style="width:110px"></label>
       <span class="esp"></span>
       <span class="mt-etat" id="mtEtat"></span>
@@ -495,6 +640,10 @@ function construire() {
   q('#mtAimant').onclick = () => { M.aimant = !M.aimant; stock.set('mt.aimant', M.aimant); q('#mtAimant').classList.toggle('on', M.aimant); };
   q('#mtZoom').oninput = e => M && zoom(+e.target.value);
   q('#mtStBtn').onclick = () => { if (!M) return; M.sousTitres = !M.sousTitres; stock.set('mt.st', M.sousTitres); q('#mtStBtn').classList.toggle('on', M.sousTitres); majVue(); };
+  q('#mtAddVisuel').onclick = ev => {
+    const bouton = ev.target.closest('[data-visuel]');
+    if (M && bouton) { q('#mtAddVisuel').open = false; importerVisuel(bouton.dataset.visuel); }
+  };
   q('#mtSave').onclick = () => M && enregistrerAvecCopie();
   q('#mtOrig').onclick = () => M && original();
   q('#mtEnvoi').onclick = () => M && envoyer();

@@ -76,7 +76,11 @@ Une piste « Repères » montre les commentaires et moments forts posés dans la
 
 Les retouches s'enregistrent toutes seules, 0,6 s après chaque geste, dans `revue/montage/<plan>.manuel.json` ; `Ctrl`+`S` enregistre en plus une copie horodatée dans `revue/sauvegardes/`. Le plan d'origine n'est jamais modifié. « Plan d'origine » revient en arrière. « Envoyer à Claude » enregistre puis prévient la conversation, qui rend la nouvelle version à partir de ce fichier (nouveau nom de rendu, sans écraser les précédents).
 
-Les cartes viennent de `<plan>.overlays.json` à côté du plan (id, type, temps source, durée, image) ; sans lui, seule la coupe est éditable.
+Pour précharger les visuels, place un fichier `<plan>.overlays.json` à côté du plan (id, type, temps source, durée, image).
+
+Pour éditer l’habillage d’un épisode en 16:9, ajoute `"habillage": true` au plan et utilise une prise sans habillage incrusté. La timeline affiche alors trois pistes, Cartes, Captures et Bandeaux. **Ajouter un visuel** importe une image PNG, JPEG ou WebP à la tête de lecture. Un clic sur un visuel permet de régler son début, sa durée et sa position à l’écran, ou de remplacer son image.
+
+Dans `<plan>.overlays.json`, `kind` vaut `P` (carte), `S` (capture) ou `T` (bandeau). Les cartes peuvent utiliser `mode: "side"` ou `"full"`. Les captures utilisent `"pip"` ou `"full"`. Les bandeaux utilisent `"lower"`, `"right"` ou `"side"`. Pour les visuels latéraux, le plan peut définir `recadrages` sous forme de plages `{src, a, b, rect: [x, y, largeur, hauteur]}`. Les champs `a` et `b` sont en secondes sur la prise, et le rectangle utilise des coordonnées sur une image de 1280 × 720.
 
 ## Une salle par conversation
 
