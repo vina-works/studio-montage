@@ -99,6 +99,10 @@ Un timecode se rapporte **à la vidéo commentée**. Sur une préécoute ou un r
 
 L'export « Moments forts en edit.json » garde ces timecodes tels quels. Un moment ponctuel y devient une fenêtre de 3 s avant à 7 s après, à recaler sur la transcription avant de rendre quoi que ce soit.
 
+Pour un commentaire attaché à une capture de la timeline, relever la version, le timecode affiché et le plan sélectionné. Le texte de la piste entière peut désigner un autre passage. Refaire la correspondance entre le temps du montage manuel, le temps du média affiché et celui du rush avant d’intervenir.
+
+Pour une correction ciblée de carte ou de bandeau, retrouver son `id` dans le plan de base et dans le montage manuel enregistré. Conserver les autres réglages. Vérifier l’image dans la salle au timecode où le problème a été signalé. Un contrôle sur une autre carte ou une seule image extraite du MP4 ne suffit pas à établir que le lecteur est corrigé.
+
 ## Limites
 
 - Lecture arrière impossible (le navigateur ne la gère pas) : `J` recule de 5 s, `←` d'une image.

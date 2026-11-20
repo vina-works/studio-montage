@@ -41,3 +41,14 @@ Préécoute : même chose en 720p avec `h264_nvenc` (19 minutes rendues en 2 à 
 - Corrélation audio avec la préécoute validée.
 - Pic audio de la source contre celui du rendu (le montage ne doit pas ajouter de saturation).
 - Une planche d'images aux moments clés (panneaux, cartes, raccords).
+
+## Exporter depuis la dernière revue
+
+- Capturer la version enregistrée du montage manuel et ses visuels juste avant le rendu. Conserver cette copie avec les intermédiaires pour savoir quelles coupes et quels placements ont produit le master.
+- Garder la correspondance des plans avec leurs rushs. Une préécoute montée peut servir de référence de temps, et l’image est reprise depuis les sources de meilleure qualité disponibles.
+- Quand un échange semble décalé pendant quelques secondes, comparer les pistes audio sur le passage exact avant et après le raccord. En cas de changement de piste, compenser son décalage à son point de lecture et vérifier l’attaque des voix après assemblage.
+- Mesurer les crêtes et le niveau moyen sur le MP4 encodé. L’AAC peut créer des crêtes plus hautes que le signal PCM. Si une piste de chapitres invalide bloque la relecture du MP4, conserver les chapitres dans un fichier texte et remuxer la vidéo, l’audio et les sous-titres.
+
+## Déposer le master sur Drive
+
+Si l'auteur demande le dépôt, repérer le dossier de production à partir des autres fichiers de l’épisode, puis comparer la taille du master à la limite de la méthode d’envoi. Pour un fichier trop volumineux, utiliser le client de synchronisation ou l’interface officielle de Drive avec le compte approprié. Après l’envoi, vérifier le nom et la taille à distance. Un fichier présent peut encore attendre son traitement pour la lecture dans Drive.
