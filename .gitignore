@@ -10,6 +10,17 @@ coverage
 # Médias et rendus : jamais dans le dépôt
 *.mp4
 *.mov
+*.m4v
+*.mkv
+*.webm
+*.avi
+*.mpg
+*.mpeg
+*.wmv
+*.flv
+*.mxf
+*.m2ts
+*.3gp
 *.mp3
 *.m4a
 *.wav

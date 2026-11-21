@@ -21,3 +21,8 @@ Chaque ligne a coûté au moins un aller-retour sur l'épisode 1.
 | Calcul qui ne finit pas, sans progression | FFT naïve sur toute la piste | taille fixe en puissance de 2, signal sous-échantillonné, afficher la progression |
 | Une commande PowerShell `gh ... --jq '... | @tsv'` échoue | les guillemets internes cassent l'argument | variables intermédiaires ou script |
 | Le fichier temporaire a disparu entre deux sessions | dossier temporaire de session effacé | tout script utile va dans le dépôt, pas dans un dossier temporaire |
+| Le plan signalé ne correspond pas au libellé de la piste | une annotation de navigateur vise toute la piste et peut reprendre le texte de son premier clip | relever la version, le timecode affiché et le clip sélectionné, puis remonter aux rushs à travers les coupes manuelles |
+| La carte latérale reste visible tandis que la vidéo disparaît | le lecteur Chromium peut perdre l’image d’une vidéo soumise à un masque et à une transformation | utiliser un conteneur de recadrage à débordement masqué, puis vérifier au timecode signalé après un saut dans la vidéo |
+| Les lèvres se décalent brièvement au retour plateau | l’ancienne ouverture passe d’une piste OBS à l’autre avec une avance différente | vérifier les deux pistes par corrélation sur la réplique et corriger son décalage local |
+| La crête dépasse le plafond après export | l’encodage AAC crée des crêtes absentes de la mesure PCM | mesurer après encodage et régler le plafond en conséquence |
+| Le dépôt du master échoue dès l’ouverture du fichier | le connecteur Drive de cet export plafonnait à 512 Mio | vérifier la taille avant l’envoi et choisir un mode de transfert adapté |
