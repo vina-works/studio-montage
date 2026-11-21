@@ -23,8 +23,10 @@ tmp/
 .travail*/
 __pycache__/
 
-# Fichiers régénérables par outils/panneaux.py et planche_plans.py
-episodes/*/illustrations/*.html
-episodes/*/illustrations/*.png
-episodes/*/illustrations/*.jpg
-episodes/*/shorts/planche_*.jpg
+# Épisodes : contenus personnels, gardés en local seulement
+episodes/*
+!episodes/README.md
+
+# Thème personnel (voir theme/README.md)
+theme/local.json
+outils/*.local.json
