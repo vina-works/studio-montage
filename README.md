@@ -1,4 +1,4 @@
-# tenko-studio
+# studio-montage
 
 Un studio de montage par transcript. On monte des podcasts et des vidéos face caméra en éditant le texte, pas la timeline : transcription au mot, plan de coupe en JSON, rendu FFmpeg, vérification par retranscription. Le même matériau sert ensuite aux shorts verticaux et aux illustrations.
 
@@ -13,7 +13,7 @@ Les couleurs, polices et signatures des visuels viennent d'un [thème](theme/REA
 
 ## Démarrer
 
-Prérequis : Windows, FFmpeg et FFprobe dans le `PATH`, Python 3.12, Google Chrome (pour rendre les panneaux), une carte NVIDIA pour aller vite (sinon le processeur prend le relais).
+Prérequis : Windows, FFmpeg et FFprobe dans le `PATH`, Python 3.12, Google Chrome ou Chromium (pour rendre les panneaux ; chemin trouvé tout seul, ou via la variable `CHROME`), une carte NVIDIA pour aller vite (sinon le processeur prend le relais).
 
 ```powershell
 python -m venv $HOME\.video-env
@@ -23,6 +23,10 @@ node scripts/setup-hooks.mjs
 
 Puis suivre [le déroulé d'un épisode](wiki/01-deroule-d-un-episode.md).
 
-## Base commune
+## Contribuer
 
-Ce dépôt dérive de [`vina-works/repo-home`](https://github.com/vina-works/repo-home) : hooks Git, format des commits, contrôle de style. Mise à jour : `node scripts/home-sync.mjs`.
+Les issues et les PR sont les bienvenues. Le format des commits et la façon de tester un outil sont décrits dans [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Licence
+
+[MIT](LICENSE).
