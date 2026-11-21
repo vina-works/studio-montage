@@ -330,6 +330,28 @@ def lire_json(f: Path):
         return None
 
 
+def lire_plan(p: Path):
+    """Plan de coupe où chaque segment porte sa source, en chemin relatif au dossier de travail.
+
+    Accepte aussi le format à une seule source (`source` en tête de fichier, chemin absolu ou relatif) :
+    les segments sans `source` la reçoivent.
+    """
+    d = lire_json(p)
+    if not isinstance(d, dict) or not isinstance(d.get("keep"), list):
+        return d
+    src = d.get("source")
+    if isinstance(src, str) and src:
+        s = Path(src) if Path(src).is_absolute() else RACINE / src
+        try:
+            src = s.resolve().relative_to(RACINE).as_posix()
+        except ValueError:
+            pass
+        for k in d["keep"]:
+            if isinstance(k, dict) and not k.get("source"):
+                k["source"] = src
+    return d
+
+
 def mots_transcription(p: Path) -> list:
     """[[mot, debut, fin], ...] depuis <media>.transcript.json (timestamps au mot)."""
     d = lire_json(p.with_suffix(".transcript.json")) or {}
@@ -365,13 +387,13 @@ def reperes() -> list[dict]:
     Un plan de coupe (edit*.json) peut lister ses rendus dans "rendus" : les timecodes d'un rendu sont
     reconvertis en temps source avec ce plan ; ceux d'une source sont repris tels quels.
     """
-    plans = [(p, lire_json(p)) for p in RACINE.glob("edit*.json")
+    plans = [(p, lire_plan(p)) for p in RACINE.glob("edit*.json")
              if p.is_file() and not p.name.endswith((".overlays.json", ".manuel.json"))]
     medias: dict[str, tuple] = {}
     for p, d in plans:
         if not isinstance(d, dict) or not isinstance(d.get("keep"), list):
             continue
-        for src in d.get("sources") or sorted({k.get("source") for k in d["keep"]}):
+        for src in d.get("sources") or sorted({k.get("source") for k in d["keep"] if isinstance(k, dict) and k.get("source")}):
             medias.setdefault(src, ("source", None))
         for rel in d.get("rendus", []):
             medias.setdefault(rel, ("rendu", _mise_en_page(d)))
@@ -514,7 +536,7 @@ class Gestionnaire(BaseHTTPRequestHandler):
                 return self.send_error(400, "plan de coupe inconnu")
             m = montage_manuel(p)
             return self._json({
-                "edit": lire_json(p),
+                "edit": lire_plan(p),
                 "overlays": lire_json(p.with_name(p.stem + ".overlays.json")),
                 "manuel": lire_json(m) if m.exists() else None,
                 "reperes": reperes(),
