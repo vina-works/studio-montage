@@ -12,9 +12,8 @@ import json
 import subprocess
 from pathlib import Path
 
-from commun import ffmpeg, theme, utf8
+from commun import chrome, ffmpeg, theme, utf8
 
-CHROME = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
 TH = theme()
 C, P = TH["couleurs"], TH["polices"]
 TITRE = f"font-family:'{P['titre']}',sans-serif;font-weight:{P['titre_graisse']}"
@@ -61,7 +60,7 @@ def main():
         h = d / f"{p['id']}.html"
         h.write_text(html(p), encoding="utf-8")
         png = d / p.get("png", f"{p['id']}.png")
-        subprocess.run([CHROME, "--headless=new", "--disable-gpu", "--hide-scrollbars", "--window-size=960,1080", "--virtual-time-budget=6000",
+        subprocess.run([chrome(), "--headless=new", "--disable-gpu", "--hide-scrollbars", "--window-size=960,1080", "--virtual-time-budget=6000",
                         f"--screenshot={png}", h.as_uri()], capture_output=True, timeout=120)
         if args.video and p.get("moment") is not None:
             jpg = d / f"{p['id']}_incrust.jpg"
