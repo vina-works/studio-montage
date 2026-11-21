@@ -1,4 +1,4 @@
-// Active les hooks git du dépôt (.githooks/). Lancé par `pnpm install` via le script "prepare".
+// Active les hooks git du dépôt (.githooks/) : `node scripts/setup-hooks.mjs`.
 // Silencieux et sans erreur s'il n'y a pas de dépôt git (ex. archive zip, build en CI).
 import { chmodSync, existsSync, readdirSync } from "node:fs";
 import { spawnSync } from "node:child_process";

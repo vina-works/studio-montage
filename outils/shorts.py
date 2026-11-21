@@ -16,9 +16,8 @@ from pathlib import Path
 
 import numpy as np
 
-from commun import FILL, couleur_ass, decode, ffmpeg, glossaire, mots, noms_propres, norm, t, theme, utf8
+from commun import FILL, chrome, couleur_ass, decode, ffmpeg, glossaire, mots, noms_propres, norm, t, theme, utf8
 
-CHROME = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
 SR, FPS = 48000, 30
 R = {"marge": 0.12, "pause": 0.32, "seuil": 0.5}
 PROPRES = noms_propres()
@@ -34,7 +33,7 @@ def page(work, nom, texte):
     f.write_text(f"<!doctype html><meta charset=utf-8>{FONTS}<style>*{{margin:0}}html,body{{width:1080px;height:1920px;background:transparent}}</style>"
                  f"<div style=\"{CADRE}\">{texte.replace(' ?', '&nbsp;?')}</div>", encoding="utf-8")
     p = work / f"{nom}.png"
-    subprocess.run([CHROME, "--headless=new", "--disable-gpu", "--hide-scrollbars", "--window-size=1080,1920", "--virtual-time-budget=6000",
+    subprocess.run([chrome(), "--headless=new", "--disable-gpu", "--hide-scrollbars", "--window-size=1080,1920", "--virtual-time-budget=6000",
                     "--default-background-color=00000000", f"--screenshot={p}", f.as_uri()], capture_output=True, timeout=120)
     return p
 

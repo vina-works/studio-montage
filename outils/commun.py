@@ -118,6 +118,20 @@ def appliquer_glossaire(s, regles=None):
     return s
 
 
+def chrome():
+    """Chemin de Chrome (ou Chromium) pour rendre les panneaux : variable CHROME, sinon PATH, sinon emplacements Windows usuels."""
+    if os.environ.get("CHROME"):
+        return os.environ["CHROME"]
+    import shutil
+    for nom in ("chrome", "google-chrome", "chromium", "chromium-browser"):
+        if shutil.which(nom):
+            return shutil.which(nom)
+    for base in (os.environ.get("PROGRAMFILES"), os.environ.get("PROGRAMFILES(X86)"), os.environ.get("LOCALAPPDATA")):
+        if base and (p := Path(base) / "Google" / "Chrome" / "Application" / "chrome.exe").exists():
+            return str(p)
+    sys.exit("Chrome introuvable : installe-le ou indique son chemin dans la variable CHROME.")
+
+
 def ffmpeg(*args, **kw):
     return subprocess.run(["ffmpeg", "-v", "error", "-y", *map(str, args)], check=True, **kw)
 

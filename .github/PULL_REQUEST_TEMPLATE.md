@@ -8,6 +8,5 @@
 
 ## Checklist
 
-- [ ] `pnpm check` passe (si applicable)
 - [ ] Titre de PR au format `type(scope): #issue description`
 - [ ] Doc / variables d'environnement mises à jour si besoin
