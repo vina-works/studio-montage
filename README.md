@@ -6,6 +6,8 @@ On transcrit la vidéo au mot près, on décide quoi garder dans un fichier JSON
 
 Le dépôt réunit des scripts Python, une salle de revue locale pour commenter les préécoutes, et un wiki qui explique la méthode et les réglages qui marchent. Il est pensé pour travailler seul ou avec un agent de code (Claude Code, Codex) qui lit la transcription et propose le plan de coupe.
 
+![La salle de revue : une préécoute en lecture, les commentaires horodatés à droite](docs/images/salle-de-revue.png)
+
 ## Ce que ça fait
 
 - **Transcription au mot** avec faster-whisper (`large-v3-turbo`), sur carte NVIDIA ou sur processeur.
@@ -32,6 +34,8 @@ vidéo ──> transcrire.py ──> transcript.json (mots horodatés)
 ```
 
 Le texte est la référence : on coupe sur les bornes des mots, on relit, on corrige le JSON, on rend à nouveau. Aucune source n'est écrasée, aucun rendu n'est remplacé.
+
+![Un extrait de transcription, où la reprise coupée apparaît barrée, et les passages gardés dans edit.json](docs/images/transcription-et-plan.png)
 
 ## Prérequis
 
@@ -106,6 +110,10 @@ python outils\revue\serveur.py --racine "D:\ep01" --session ep01
 
 La page s'ouvre sur http://localhost:8765 (ou le port libre suivant). Elle liste les vidéos du dossier ; on y regarde une préécoute en x2 ou x3, on commente au timecode, on marque les moments forts, puis on exporte en Markdown ou en `edit.json`. Le bouton « Envoyer à Claude » écrit les retours dans un fichier qu'un agent peut surveiller. Mode d'emploi : [wiki/12](wiki/12-salle-de-revue.md).
 
+Le bouton « Montage » ouvre la timeline du plan de coupe : on y raccourcit, coupe ou supprime un plan à la main, et la vidéo se rejoue depuis la source sans rien rendre.
+
+![La timeline de montage : les plans gardés, les repères de la revue et le détail du plan sélectionné](docs/images/timeline-montage.png)
+
 ## Configuration
 
 | Quoi | Où | Suivi par git |
@@ -116,6 +124,10 @@ La page s'ouvre sur http://localhost:8765 (ou le port libre suivant). Elle liste
 | Transcription sans carte graphique | `transcrire.py --cpu` | sans objet |
 
 Détail des clés du thème : [theme/README.md](theme/README.md).
+
+<img src="docs/images/panneau-mi-ecran.png" alt="Un panneau mi-écran rendu par panneaux.py avec le thème neutre" width="320">
+
+*Un panneau mi-écran rendu avec le thème neutre livré.*
 
 ## Avec un agent de code
 
@@ -130,6 +142,7 @@ modeles/     plan éditorial, brief du chef monteur, brief des shorts
 theme/       thème neutre livré ; ton thème dans theme/local.json
 episodes/    ton travail, ignoré par git (structure conseillée dans episodes/README.md)
 scripts/     hooks Git et contrôle de style (Node.js)
+docs/images/ captures du README
 ```
 
 ## Limites connues
@@ -138,6 +151,8 @@ scripts/     hooks Git et contrôle de style (Node.js)
 - Pas de suite de tests automatique : les outils ont été validés sur un épisode réel (voir « État des tests » dans [outils/README.md](outils/README.md)).
 - `qui_parle.py` donne un indice, pas une preuve : croise toujours avec l'image.
 - La préécoute `--apercu` demande une carte NVIDIA (NVENC).
+
+Les captures de ce README viennent d'une vraie démo, écran flouté.
 
 ## Contribuer
 
