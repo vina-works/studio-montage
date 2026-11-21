@@ -5,7 +5,7 @@ Usage : python shorts.py shorts.json [--seul 4_vous_priez] -o rendus/shorts
                  (temps de la transcription), son accroche, la liste de plans à utiliser.
   cadrage.json : {"liste": [{"start", "end", "x", "y", "largeur"}]} en temps et pixels de la source 1920x1080 ;
                  x, y = centre du visage ; largeur = 500 gros plan, 405 plan moyen, 360 plan large.
-Voir wiki/07-shorts.md et episodes/ep01/shorts/.
+Voir wiki/07-shorts.md et theme/README.md.
 """
 import argparse
 import json
@@ -16,15 +16,17 @@ from pathlib import Path
 
 import numpy as np
 
-from commun import FILL, ICI, decode, ffmpeg, glossaire, mots, norm, t, utf8
+from commun import FILL, couleur_ass, decode, ffmpeg, glossaire, mots, noms_propres, norm, t, theme, utf8
 
 CHROME = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
 SR, FPS = 48000, 30
 R = {"marge": 0.12, "pause": 0.32, "seuil": 0.5}
-PROPRES = set(json.loads((ICI / "glossaire.json").read_text(encoding="utf-8-sig"))["noms_propres"])
-FONTS = '<link href="https://fonts.googleapis.com/css2?family=Inter:wght@600&display=block" rel=stylesheet>'
-CADRE = ("position:absolute;left:60px;right:60px;top:130px;background:#1c1d21;border-left:12px solid #3b82f6;padding:30px 38px;"
-         "font-family:'Inter',sans-serif;font-weight:600;font-size:58px;line-height:1.14;color:#f2f2f2")
+PROPRES = noms_propres()
+TH = theme()
+C, P = TH["couleurs"], TH["polices"]
+FONTS = f'<link href="{P["url"]}" rel=stylesheet>'
+CADRE = (f"position:absolute;left:60px;right:60px;top:130px;background:{C['fond']};border-left:12px solid {C['accent']};padding:30px 38px;"
+         f"font-family:'{P['titre']}',sans-serif;font-weight:{P['titre_graisse']};font-size:58px;line-height:1.14;color:{C['texte']}")
 
 
 def page(work, nom, texte):
@@ -86,11 +88,12 @@ def ass(work, key, words, dur, cuts, regles):
         ge = groups[gi + 1][0]["a"] if gi + 1 < len(groups) else dur
         for i, d in enumerate(g):
             e = g[i + 1]["a"] if i + 1 < len(g) else min(ge, d["z"] + 0.4)
-            txt = " ".join(("{\\c&HF7823B&}" + x["w"] + "{\\c&HF2F2F2&}") if j == i else x["w"] for j, x in enumerate(g))
+            txt = " ".join(("{\\c&H" + couleur_ass(C["accent"]) + "&}" + x["w"] + "{\\c&H" + couleur_ass(C["texte"]) + "&}")
+                           if j == i else x["w"] for j, x in enumerate(g))
             ev.append(f"Dialogue: 0,{ts(d['a'])},{ts(max(e, d['a'] + 0.05))},S,,0,0,0,,{txt}")
     head = ("[Script Info]\nScriptType: v4.00+\nPlayResX: 1080\nPlayResY: 1920\nWrapStyle: 2\n\n[V4+ Styles]\n"
             "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n"
-            "Style: S,Segoe UI Black,104,&H00F2F2F2,&H00F2F2F2,&H00211D1C,&H00000000,0,0,0,0,100,100,0,0,1,7,0,2,50,50,500,1\n\n[Events]\n"
+            f"Style: S,Segoe UI Black,104,&H00{couleur_ass(C['texte'])},&H00{couleur_ass(C['texte'])},&H00{couleur_ass(C['fond'])},&H00000000,0,0,0,0,100,100,0,0,1,7,0,2,50,50,500,1\n\n[Events]\n"
             "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n")
     f = work / f"{key}.ass"
     f.write_text(head + "\n".join(ev) + "\n", encoding="utf-8")

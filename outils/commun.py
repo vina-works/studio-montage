@@ -1,4 +1,4 @@
-"""Fonctions partagées par les outils : temps, mots horodatés, décodage audio, GPU, glossaire."""
+"""Fonctions partagées par les outils : temps, mots horodatés, décodage audio, GPU, glossaire, thème."""
 import glob
 import json
 import os
@@ -10,6 +10,7 @@ from pathlib import Path
 import numpy as np
 
 ICI = Path(__file__).parent
+RACINE = ICI.parent
 FILL = {"euh", "heu", "hum", "hmm", "mmh"}
 
 
@@ -67,8 +68,48 @@ def whisper(modele="large-v3-turbo"):
         return WhisperModel(modele, device="cpu", compute_type="int8")
 
 
+def _lire(f):
+    return json.loads(Path(f).read_text(encoding="utf-8-sig"))
+
+
+def donnees_glossaire():
+    """glossaire.json, complété par glossaire.local.json (noms propres et corrections personnels, ignoré par git)."""
+    g = _lire(ICI / "glossaire.json")
+    loc = ICI / "glossaire.local.json"
+    if loc.exists():
+        l = _lire(loc)
+        g["remplacements"] = g["remplacements"] + l.get("remplacements", [])
+        g["noms_propres"] = g["noms_propres"] + l.get("noms_propres", [])
+    return g
+
+
 def glossaire():
-    return [(a, b) for a, b in json.loads((ICI / "glossaire.json").read_text(encoding="utf-8-sig"))["remplacements"]]
+    return [(a, b) for a, b in donnees_glossaire()["remplacements"]]
+
+
+def noms_propres():
+    return set(donnees_glossaire()["noms_propres"])
+
+
+def _fusion(a, b):
+    """Fusionne b dans a, clé par clé (les dictionnaires imbriqués aussi)."""
+    r = dict(a)
+    for k, v in b.items():
+        r[k] = _fusion(r[k], v) if isinstance(v, dict) and isinstance(r.get(k), dict) else v
+    return r
+
+
+def theme():
+    """theme/defaut.json, complété par theme/local.json (ou par le fichier désigné par la variable THEME)."""
+    th = _lire(RACINE / "theme" / "defaut.json")
+    perso = Path(os.environ["THEME"]) if os.environ.get("THEME") else RACINE / "theme" / "local.json"
+    return _fusion(th, _lire(perso)) if perso.exists() else th
+
+
+def couleur_ass(hexa):
+    """#rrggbb -> BBGGRR, l'ordre des couleurs dans un fichier ASS."""
+    h = hexa.lstrip("#")
+    return f"{h[4:6]}{h[2:4]}{h[0:2]}".upper()
 
 
 def appliquer_glossaire(s, regles=None):

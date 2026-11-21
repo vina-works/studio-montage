@@ -1,0 +1,20 @@
+{
+  "nom": "neutre",
+  "couleurs": {
+    "fond": "#1c1d21",
+    "encadre": "#15161a",
+    "bordure": "#34353c",
+    "texte": "#f2f2f2",
+    "accent": "#3b82f6",
+    "texte_2": "#b4b6bd",
+    "texte_3": "#8a8c94"
+  },
+  "polices": {
+    "titre": "Inter",
+    "titre_graisse": 600,
+    "texte": "JetBrains Mono",
+    "url": "https://fonts.googleapis.com/css2?family=Inter:wght@600&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+Symbols+2&family=Noto+Sans&display=block"
+  },
+  "signatures": {},
+  "signature_defaut": ""
+}

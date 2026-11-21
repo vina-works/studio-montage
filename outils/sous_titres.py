@@ -7,9 +7,9 @@ import argparse
 import json
 from pathlib import Path
 
-from commun import FILL, ICI, appliquer_glossaire, glossaire, mots, norm, utf8
+from commun import FILL, appliquer_glossaire, glossaire, mots, noms_propres, norm, utf8
 
-PROPRES = set(json.loads((ICI / "glossaire.json").read_text(encoding="utf-8-sig"))["noms_propres"])
+PROPRES = noms_propres()
 
 
 def joindre(ws, regles):
