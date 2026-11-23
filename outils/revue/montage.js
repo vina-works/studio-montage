@@ -15,6 +15,7 @@ const MT = window.MT = { actif: false };
 const COUL = ['#5a52e0', '#2b86c9', '#b0527a', '#3f9a6d'];
 const CATS = { fort: ['Moment fort', '#ffb020'], short: ['Idée de short', '#b06cff'], citation: ['Citation', '#3ea8ff'], rire: ['Rire', '#2fd27a'], couper: ['À couper', '#ff4d5e'] };
 let M = null, drag = null, tSave = null;
+let sauvegarde = Promise.resolve();
 const VITESSES_MT = [1, 1.5, 2, 3];
 let vitesseMt = VITESSES_MT.includes(+stock.get('mtVitesse', 1)) ? +stock.get('mtVitesse', 1) : 1;
 
@@ -54,10 +55,18 @@ function toOutStrict(src, t) {
 }
 function ovTemps(ov) { const S = toOut(ov.src, ov.at); return S == null ? null : { S, E: Math.min(S + ov.d, M.total) }; }
 function motsDe(src) { return M.mots[src] || []; }
+function corrigerMots() {
+  M.motsCorriges = Object.fromEntries(Object.entries(M.mots).map(([src, ws]) => [src, ws.slice()]));
+  for (const { source, index, original, start, end, texte } of M.corrections) {
+    const mot = M.mots[source]?.[index];
+    if (mot?.[0] === original && mot[1] === start && mot[2] === end) {
+      M.motsCorriges[source][index] = [texte, start, end];
+    }
+  }
+}
 function texteClip(c) {
-  const ws = motsDe(c.src); const out = [];
-  for (const [w, s] of ws) { if (s >= c.b) break; if (s >= c.a - 0.01) out.push(w); }
-  return out.join(' ');
+  const ws = M.motsCorriges[c.src] || [];
+  return nettoyerTexte(ws.filter(([, s]) => s >= c.a - 0.01 && s < c.b).map(([w]) => w).filter(Boolean).join(' '));
 }
 function aimanter(src, t, mode) {
   if (!M.aimant) return Math.round(t * FPS) / FPS;
@@ -79,7 +88,7 @@ function nettoyerTexte(t) {
 function calculerSousTitres() {
   const cues = [];
   for (const c of M.clips) {
-    const ws = motsDe(c.src).filter(([, s]) => s >= c.a - 0.001 && s < c.b - 0.03);
+    const ws = (M.motsCorriges[c.src] || []).filter(([w, s]) => w && s >= c.a - 0.001 && s < c.b - 0.03);
     let cur = [];
     const vider = () => {
       if (!cur.length) return;
@@ -120,11 +129,11 @@ function tousRepères() {
 const couleurRep = r => r.type === 'moment' ? (CATS[r.cat] || CATS.fort)[1] : r.type === 'repère' ? '#3ea8ff' : (r.resolu ? '#6d6e78' : '#f5f5f5');
 
 /* historique */
-const instantane = () => JSON.stringify({ c: M.clips.map(strip), o: M.overlays, k: M.marks });
+const instantane = () => JSON.stringify({ c: M.clips.map(strip), o: M.overlays, k: M.marks, texte: M.corrections });
 function snapshot() { M.hist.push(instantane()); if (M.hist.length > 120) M.hist.shift(); M.fut = []; }
 function restaurer(json) {
   const d = JSON.parse(json);
-  M.clips = d.c.map(c => ({ ...c })); M.overlays = d.o.map(o => ({ ...o })); M.marks = (d.k || []).map(m => ({ ...m }));
+  M.clips = d.c.map(c => ({ ...c })); M.overlays = d.o.map(o => ({ ...o })); M.marks = (d.k || []).map(m => ({ ...m })); M.corrections = d.texte;
   M.sel = null; M.selOv = null; M.selRep = null; rendre(); planifier();
 }
 function annuler() { if (!M.hist.length) return notif('Rien à annuler'); M.fut.push(instantane()); restaurer(M.hist.pop()); notif('Annulé'); }
@@ -141,6 +150,7 @@ async function charger() {
     f, edit: d.edit, images: new Map(), sources: d.edit.sources || [...new Set(d.edit.keep.map(k => k.source))],
     clips: (base?.keep || d.edit.keep).map(k => ({ id: uid(), src: k.source, a: k.start, b: k.end, why: k.why || '' })),
     overlays: (base?.overlays || d.overlays || []).map(o => ({ ...o })),
+    corrections: base?.corrections_transcript || d.edit.corrections_transcript || [],
     marks: (base?.reperes || []).map(m => ({ ...m })), rep: d.reperes || [],
     filtres: { comms: true, moments: true, marks: true }, onglet: 'edition',
     mots: {}, vids: {}, sel: null, selOv: null, selRep: null, pxs: stock.get('mt.pxs', 4), t: 0, playing: false,
@@ -308,7 +318,7 @@ function majVue(suivre) {
 /* ---------- timeline ---------- */
 function rendre() {
   synchroniserVisuels();
-  layout(); calculerSousTitres();
+  layout(); corrigerMots(); calculerSousTitres();
   const px = M.pxs, W = Math.ceil(M.total * px) + 80;
   const pas = px >= 12 ? 5 : px >= 5 ? 10 : 30;
   let ticks = '';
@@ -427,7 +437,7 @@ function original() {
   if (!confirm('Revenir au plan d\'origine ? Tes retouches seront perdues (annulables avec Ctrl+Z).')) return;
   snapshot();
   M.clips = M.original.keep.map(k => ({ id: uid(), src: k.source, a: k.start, b: k.end, why: k.why || '' }));
-  M.overlays = M.original.overlays.map(o => ({ ...o })); M.marks = []; M.sel = null; M.selOv = null; M.selRep = null; rendre(); allerA(0); planifier();
+  M.overlays = M.original.overlays.map(o => ({ ...o })); M.marks = []; M.corrections = M.edit.corrections_transcript || []; M.sel = null; M.selOv = null; M.selRep = null; rendre(); allerA(0); planifier();
 }
 function zoom(p) { M.pxs = clamp(p, 1, 30); stock.set('mt.pxs', M.pxs); q('#mtZoom').value = M.pxs; rendre(); }
 
@@ -519,9 +529,14 @@ function majPanneau() {
       <div class="rang"><label><span class="l">Début source (s)</span><input type="number" step="0.01" id="mtA" value="${c.a.toFixed(2)}"></label>
       <label><span class="l">Fin source (s)</span><input type="number" step="0.01" id="mtB" value="${c.b.toFixed(2)}"></label></div>
       <div class="v">${c.d.toFixed(2)} s, de ${fmt(c.o)} à ${fmt(c.o + c.d)} dans le montage</div>
-      <div class="l">Texte</div><div class="txt">${esc(texteClip(c)) || '(rien)'}</div>
+      <div class="l">Texte</div><div class="txt" id="mtTexte">${esc(texteClip(c)) || '(rien)'}</div>
+      <div class="btns"><button class="btn" id="mtEditTexte">Modifier le texte</button></div>
       ${c.why ? `<div class="l">Pourquoi</div><div class="aide">${esc(c.why)}</div>` : ''}
       <div class="btns"><button class="btn" id="mtAv">◀ Avant</button><button class="btn" id="mtAp">Après ▶</button><button class="btn danger" id="mtSup">Supprimer le plan</button></div>`;
+    const modifier = q('#mtEditTexte');
+    const editable = motsDe(c.src).some(([, s]) => s >= c.a - 0.01 && s < c.b);
+    modifier.disabled = !editable;
+    modifier.onclick = () => ouvrirEditionTexte(c);
     q('#mtA').onchange = ev => { const v = +ev.target.value; if (v >= 0 && v < c.b - 0.1) { snapshot(); c.a = v; rendre(); planifier(); } else rendre(); };
     q('#mtB').onchange = ev => { const v = +ev.target.value; if (v > c.a + 0.1 && v <= dureeSrc(c.src)) { snapshot(); c.b = v; rendre(); planifier(); } else rendre(); };
     q('#mtAv').onclick = () => deplacer(-1); q('#mtAp').onclick = () => deplacer(1);
@@ -548,6 +563,47 @@ function majPanneau() {
   }
   const sup = q('#mtSup'); if (sup) sup.onclick = supprimer;
 }
+function ouvrirEditionTexte(c, focusIndex) {
+  const zone = q('#mtTexte'), modifier = q('#mtEditTexte');
+  const mots = motsDe(c.src), corriges = M.motsCorriges[c.src];
+  pause();
+  modifier.textContent = 'Terminer la correction';
+  modifier.onclick = () => { majPanneau(); q('#mtEditTexte').focus(); };
+  zone.innerHTML = corriges.map(([w, s], index) => {
+    if (s < c.a - 0.01 || s >= c.b) return '';
+    const original = mots[index][0];
+    const supprimer = w === '' ? ' class="mt-mot-supprime"' : '';
+    return `<button type="button" data-mot="${index}"${supprimer} title="${esc(original)}">${esc(w || original)}</button>`;
+  }).join(' ');
+  const premier = zone.querySelector(focusIndex == null ? '[data-mot]' : `[data-mot="${focusIndex}"]`);
+  premier?.focus();
+  zone.onclick = ev => {
+    const bouton = ev.target.closest('[data-mot]');
+    if (!bouton) return;
+    zone.querySelector('form')?.remove();
+    const index = +bouton.dataset.mot, [original, start, end] = mots[index];
+    const form = document.createElement('form');
+    form.innerHTML = `<label>Remplacer « ${esc(original)} »<input name="texte" type="text" maxlength="200" value="${esc(corriges[index][0])}"></label>
+      <button class="btn" type="submit">Appliquer</button>
+      <button class="btn" type="button">Annuler</button>
+      <div class="aide">Laisse le champ vide pour masquer ce mot dans les sous-titres.</div>`;
+    zone.append(form);
+    const input = form.elements.texte;
+    const annulerMot = () => { form.remove(); bouton.focus(); };
+    form.querySelector('[type=button]').onclick = annulerMot;
+    input.onkeydown = ev => { if (ev.key === 'Escape') { ev.preventDefault(); annulerMot(); } };
+    input.focus(); input.select();
+    form.onsubmit = ev => {
+      ev.preventDefault();
+      const texte = input.value.trim();
+      if (texte === corriges[index][0]) return annulerMot();
+      snapshot();
+      M.corrections = M.corrections.filter(m => m.source !== c.src || m.index !== index);
+      if (texte !== original) M.corrections.push({ source: c.src, index, original, start, end, texte });
+      rendre(); planifier(); ouvrirEditionTexte(c, index);
+    };
+  };
+}
 function listeReperes(reps) {
   const el = q('#mtInsp');
   const f = (id, nom) => `<label class="mt-f"><input type="checkbox" data-f="${id}" ${M.filtres[id] ? 'checked' : ''}> ${nom}</label>`;
@@ -573,16 +629,23 @@ function planifier() { etatSave('Modifié…', 'sale'); clearTimeout(tSave); tSa
 async function sauverMontage(copie) {
   if (!M) return false;
   clearTimeout(tSave);
+  tSave = null;
   const corps = {
     format: 'montage-manuel', base: M.f, sources: M.sources, modifie: new Date().toISOString(), duree: +M.total.toFixed(3),
     keep: M.clips.map(c => ({ source: c.src, start: +c.a.toFixed(3), end: +c.b.toFixed(3), why: c.why || '' })),
     overlays: M.overlays.map(o => ({ id: o.id, kind: o.kind, src: o.src, at: o.at, d: o.d, img: o.img,
       label: o.label, mode: o.mode, split: o.split })),
+    corrections_transcript: M.corrections,
     reperes: M.marks.map(m => ({ id: m.id, label: m.label || '', src: m.src, at: m.at })),
   };
-  try {
+  const ecriture = sauvegarde.then(async () => {
     const r = await fetch('/api/montage?p=' + encodeURIComponent(M.f) + (copie ? '&copie=1' : ''), { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corps) });
     const j = await r.json(); if (!r.ok || !j.ok) throw new Error();
+    return j;
+  });
+  sauvegarde = ecriture.catch(() => {});
+  try {
+    const j = await ecriture;
     M.fichier = j.fichier; M.copie = j.copie;
     etatSave('Enregistré à ' + new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' (' + fmt(M.total) + ')');
     return true;
@@ -663,7 +726,7 @@ MT.ouvrir = async () => {
     if (!await charger()) { fermer(); return; }
     q('#mtZoom').value = M.pxs; q('#mtAimant').classList.toggle('on', M.aimant); q('#mtStBtn').classList.toggle('on', M.sousTitres);
     etatSave(M.manuelCharge ? 'Retouches reprises' : 'Plan d\'origine, rien de modifié');
-    if (!M.manuelCharge && !M.overlays.length) notif('Pas de fichier de cartes à côté du plan : seule la coupe est éditable');
+    if (!M.manuelCharge && !M.overlays.length && M.edit.habillage) notif('Aucun visuel chargé');
   }
 };
 function fermer() { if (M) pause(); q('#montage').hidden = true; MT.actif = false; $('#btnMontage').classList.remove('on'); }
@@ -674,6 +737,14 @@ window.addEventListener('keydown', e => {
   if (!MT.actif) return;
   const touche = (e.key || '').toLowerCase(), code = e.code;
   const mod = e.ctrlKey || e.metaKey;
+  if (e.target.closest?.('#mtTexte form')) {
+    if (!(mod && (touche === 's' || code === 'KeyS'))) return;
+    e.preventDefault(); e.stopPropagation();
+    e.target.closest('form').requestSubmit();
+    enregistrerAvecCopie();
+    return;
+  }
+  if (e.target.closest?.('#mtEditTexte, #mtTexte [data-mot]') && (touche === ' ' || touche === 'enter')) return;
   if (mod && (touche === 's' || code === 'KeyS')) { e.preventDefault(); e.stopPropagation(); if (M) enregistrerAvecCopie(); return; }
   if (mod && (touche === 'z' || code === 'KeyZ') && !e.altKey) {
     e.preventDefault(); e.stopPropagation();

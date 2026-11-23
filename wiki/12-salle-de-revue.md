@@ -76,6 +76,8 @@ Une piste « Repères » montre les commentaires et moments forts posés dans la
 
 Les retouches s'enregistrent toutes seules, 0,6 s après chaque geste, dans `revue/montage/<plan>.manuel.json` ; `Ctrl`+`S` enregistre en plus une copie horodatée dans `revue/sauvegardes/`. Le plan d'origine n'est jamais modifié. « Plan d'origine » revient en arrière. « Envoyer à Claude » enregistre puis prévient la conversation, qui rend la nouvelle version à partir de ce fichier (nouveau nom de rendu, sans écraser les précédents).
 
+Dans l'inspecteur d'un plan, clique sur « Modifier le texte », puis sur le mot à corriger. Applique la correction pour mettre à jour le texte et les sous-titres de l'aperçu. Un champ vide masque le mot. La correction suit le mot horodaté de la prise si tu déplaces ou scindes le plan, et s'enregistre avec le montage manuel. Pour générer le SRT corrigé d'un montage à une seule prise, donne ce plan manuel et la transcription de la prise à `sous_titres.py`.
+
 Pour précharger les visuels, place un fichier `<plan>.overlays.json` à côté du plan (id, type, temps source, durée, image).
 
 Pour éditer l’habillage d’un épisode en 16:9, ajoute `"habillage": true` au plan et utilise une prise sans habillage incrusté. La timeline affiche alors trois pistes, Cartes, Captures et Bandeaux. **Ajouter un visuel** importe une image PNG, JPEG ou WebP à la tête de lecture. Un clic sur un visuel permet de régler son début, sa durée et sa position à l’écran, ou de remplacer son image.

@@ -429,6 +429,17 @@ def valider_montage(d) -> bool:
                 and isinstance(k.get("start"), (int, float)) and isinstance(k.get("end"), (int, float))
                 and 0 <= k["start"] < k["end"]):
             return False
+    corrections = d.get("corrections_transcript", [])
+    if not isinstance(corrections, list):
+        return False
+    for c in corrections:
+        if not (isinstance(c, dict) and isinstance(c.get("source"), str)
+                and type(c.get("index")) is int and c["index"] >= 0
+                and isinstance(c.get("original"), str)
+                and isinstance(c.get("start"), (int, float)) and isinstance(c.get("end"), (int, float))
+                and 0 <= c["start"] <= c["end"]
+                and isinstance(c.get("texte"), str) and len(c["texte"]) <= 200):
+            return False
     return isinstance(d.get("overlays", []), list)
 
 

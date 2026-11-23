@@ -20,7 +20,7 @@ def joindre(ws, regles):
             s += " "
         elif i and not tok.startswith(("'", "-")):
             s += " "
-        if i and tok[:1].isupper() and tok.strip(",?.") not in PROPRES and not tok.isupper():
+        if i and not w.get("corrige") and tok[:1].isupper() and tok.strip(",?.") not in PROPRES and not tok.isupper():
             tok = tok[0].lower() + tok[1:]
         s += tok
     s = appliquer_glossaire(s, regles)
@@ -37,6 +37,8 @@ def couper(s, n=40):
     if len(s) <= n:
         return s
     sp = [i for i, c in enumerate(s) if c == " "]
+    if not sp:
+        return s
     i = min(sp, key=lambda p: abs(p - len(s) // 2))
     return s[:i] + "\n" + s[i + 1:]
 
@@ -51,14 +53,24 @@ def main():
     edit = json.loads(Path(args.edit).read_text(encoding="utf-8-sig"))
     off = edit.get("offset", 0.0)
     W, _ = mots(args.transcript)
+    corrections = {}
+    for c in edit.get("corrections_transcript", []):
+        if Path(c["source"]).with_suffix(".transcript.json").name != Path(args.transcript).name:
+            continue
+        if c["index"] < len(W):
+            mot = W[c["index"]]
+            if (mot["w"], mot["start"], mot["end"]) == (c["original"], c["start"], c["end"]):
+                corrections[c["source"], c["index"]] = c["texte"]
     regles = glossaire()
     items, T = [], 0.0
     for k in edit["keep"]:
         fin_texte = k.get("sous_titres_jusqu_a", k["end"])
-        for w in W:
+        source = k.get("source", edit.get("source"))
+        for index, w in enumerate(W):
+            texte = corrections.get((source, index), w["w"])
             m = (w["start"] + w["end"]) / 2 + off
-            if k["start"] <= m < min(k["end"], fin_texte) and norm(w["w"]) not in FILL:
-                items.append({"w": w["w"], "seg": w["seg"], "a": T + max(0, w["start"] + off - k["start"]), "z": T + min(k["end"] - k["start"], w["end"] + off - k["start"])})
+            if k["start"] <= m < min(k["end"], fin_texte) and texte and norm(texte) not in FILL:
+                items.append({"w": texte, "corrige": texte != w["w"], "seg": w["seg"], "a": T + max(0, w["start"] + off - k["start"]), "z": T + min(k["end"] - k["start"], w["end"] + off - k["start"])})
         T += k["end"] - k["start"]
     cues, cur = [], []
     for w in items:
@@ -79,7 +91,8 @@ def main():
             z = min(z, cues[i + 1][0]["a"] - 0.01)
         out.append(f"{i + 1}\n{ts(c[0]['a'])} --> {ts(max(z, c[0]['a'] + 0.4))}\n{couper(joindre(c, regles))}\n")
     Path(args.sortie).write_text("\n".join(out), encoding="utf-8")
-    print(f"OK {args.sortie} : {len(cues)} sous-titres, dernier à {ts(cues[-1][-1]['z'])}, montage de {ts(T)}")
+    dernier = f", dernier à {ts(cues[-1][-1]['z'])}" if cues else ""
+    print(f"OK {args.sortie} : {len(cues)} sous-titres{dernier}, montage de {ts(T)}")
 
 
 if __name__ == "__main__":
